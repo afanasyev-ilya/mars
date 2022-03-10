@@ -62,8 +62,6 @@ auto parallel_mars(SquareMatrix<T> &_J_mat,
 
                     s[i] = s_new[i];
                 }
-
-                std::cout << "par! d: " << d << " vs dmin: " << _d_min << std::endl;
             } while(d < _d_min);
         }
     }

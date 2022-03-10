@@ -40,26 +40,38 @@ int main(int argc, char **argv) {
         base_type t_min = 1, t_max = 10;
         base_type c_step = 1; // as in the paper
         base_type d_min = 0.0001; // as in the paper
-        base_type alpha = 0.4;
+        base_type alpha = 0.5;
         base_type t_step = 1;
         std::vector<base_type> h(n, 0);
 
         auto parallel_s = parallel_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step);
         std::cout << "parallel result: ";
         print(parallel_s);
-        std::cout << "parallel energy: " << dot_product(vxm(parallel_s, J), parallel_s) +
-                dot_product(h, parallel_s) << std::endl;
+        base_type parallel_energy = dot_product(vxm(parallel_s, J), parallel_s) + dot_product(h, parallel_s);
+        std::cout << "parallel energy: " << parallel_energy << std::endl;
 
         if(parser.check())
         {
-            auto sequential_s = parallel_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step);
-            if(parallel_s == sequential_s)
+            auto sequential_s = sequential_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step);
+            base_type sequential_energy = dot_product(vxm(sequential_s, J), sequential_s) + dot_product(h, sequential_s);
+            std::cout << "sequential energy: " << sequential_energy << std::endl;
+
+            if(parallel_energy == sequential_energy)
             {
-                std::cout << "results are correct!" << std::endl;
+                std::cout << "energies are correct!" << std::endl;
             }
             else
             {
-                std::cout << "results are NOT correct!" << std::endl;
+                std::cout << "energies are NOT correct!" << std::endl;
+            }
+
+            if(parallel_s == sequential_s)
+            {
+                std::cout << "vectors are the same!" << std::endl;
+            }
+            else
+            {
+                std::cout << "vectors are NOT the same!" << std::endl;
                 print(parallel_s);
                 print(sequential_s);
             }
