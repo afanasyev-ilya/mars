@@ -31,13 +31,20 @@ void SquareMatrix<T>::fill_with_rands(size_t &_dim_size)
 template <typename T>
 void SquareMatrix<T>::print()
 {
-    for(size_t j = 0; j < dim_size; j++)
+    if(dim_size*dim_size < MAX_PRINTING_SIZE)
     {
-        for (size_t i = 0; i < dim_size; i++)
+        for(size_t j = 0; j < dim_size; j++)
         {
-            std::cout << get(i, j) << std::setprecision(4) << " ";
+            for (size_t i = 0; i < dim_size; i++)
+            {
+                std::cout << get(i, j) << std::setprecision(4) << " ";
+            }
+            std::cout << std::endl;
         }
-        std::cout << std::endl;
+    }
+    else
+    {
+        std::cout << "Warning! matrix is too large to print!" << std::endl;
     }
 }
 

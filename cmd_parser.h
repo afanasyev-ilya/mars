@@ -6,12 +6,16 @@ class Parser
 {
 private:
     std::string mtx_file_name;
+    bool do_check;
+    size_t mtx_dim;
 public:
     void parse_args(int _argc, char **_argv);
 
     Parser();
 
     bool use_rand_mtx();
+    [[nodiscard]] size_t get_mtx_dim() const {return mtx_dim;};
+    [[nodiscard]] bool check() const {return do_check;};
     [[nodiscard]] std::string get_mtx_file_name() const {return mtx_file_name; };
 };
 

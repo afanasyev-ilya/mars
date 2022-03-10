@@ -3,14 +3,14 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-auto seq_mars(SquareMatrix<T> &_J_mat,
-              std::vector<T> &_h,
-              size_t _n,
-              int _t_min,
-              int _t_max,
-              T _c_step,
-              T _d_min,
-              T _alpha)
+auto sequential_mars(SquareMatrix<T> &_J_mat,
+                     std::vector<T> &_h,
+                     size_t _n,
+                     int _t_min,
+                     int _t_max,
+                     T _c_step,
+                     T _d_min,
+                     T _alpha)
 {
     std::random_device rd;
     std::mt19937 rng(rd());
@@ -26,9 +26,7 @@ auto seq_mars(SquareMatrix<T> &_J_mat,
         for(auto &s_i: s)
         {
             s_i = uni(rng);
-            std::cout << s_i << ' ';
         }
-        std::cout << std::endl;
 
         current_temperature = temperature; // t' = t
 

@@ -6,6 +6,8 @@
 #include <sstream>
 #include <iomanip>
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #include "settings.hpp"
 #include "helpers.hpp"
 #include "matrix.h"
@@ -15,19 +17,22 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int main()
-{
+int main(int argc, char **argv) {
     try
     {
+        Parser parser;
+        parser.parse_args(argc, argv);
+
         SquareMatrix<base_type> J;
-        if(false)
+        if(parser.use_rand_mtx())
         {
-            size_t dim_size = 10;
+            std::cout << "Generating random matrix of size " << parser.get_mtx_dim() << std::endl;
+            size_t dim_size = parser.get_mtx_dim();
             J.fill_with_rands(dim_size);
         }
         else
         {
-            J.read_from_file("test_mat.csv");
+            J.read_from_file(parser.get_mtx_file_name());
             J.print();
         }
 
@@ -38,11 +43,28 @@ int main()
         base_type alpha = 2;
         std::vector<base_type> h(n, 0);
 
-        auto s = seq_mars(J, h, n, t_min, t_max, c_step, d_min, alpha);
-        std::cout << "result: ";
-        print(s);
+        auto parallel_s = sequential_mars(J, h, n, t_min, t_max, c_step, d_min, alpha);
+        std::cout << "parallel result: ";
+        print(parallel_s);
+        std::cout << "parallel energy: " << dot_product(vxm(parallel_s, J), parallel_s) +
+                dot_product(h, parallel_s) << std::endl;
 
-        std::cout << "energy: " << dot_product(vxm(s, J), s) + dot_product(h, s) << std::endl;
+        if(parser.check())
+        {
+            auto sequential_s = sequential_mars(J, h, n, t_min, t_max, c_step, d_min, alpha);
+            if(parallel_s == sequential_s)
+            {
+                std::cout << "results are correct!" << std::endl;
+            }
+            else
+            {
+                std::cout << "results are NOT correct!" << std::endl;
+                print(parallel_s);
+                print(sequential_s);
+            }
+        }
+
+
     }
     catch (std::string error)
     {

@@ -33,9 +33,16 @@ int sign(T val)
 template <typename T>
 void print(std::vector<T> &_data)
 {
-    for(auto &i: _data)
-        std::cout << i << ' ';
-    std::cout << std::endl;
+    if(_data.size() < MAX_PRINTING_SIZE)
+    {
+        for(auto &i: _data)
+            std::cout << i << ' ';
+        std::cout << std::endl;
+    }
+    else
+    {
+        std::cout << "Warning! vector is too large to print! (" << _data.size() << ")" << std::endl;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
