@@ -10,7 +10,8 @@ auto parallel_mars(SquareMatrix<T> &_J_mat,
                    int _t_max,
                    T _c_step,
                    T _d_min,
-                   T _alpha)
+                   T _alpha,
+                   T _t_step)
 {
     std::random_device rd;
     std::mt19937 rng(rd());
@@ -20,8 +21,8 @@ auto parallel_mars(SquareMatrix<T> &_J_mat,
     std::vector<T> s_new(_n, 0);
     std::vector<T> phi(_n, 0);
 
-    T current_temperature = 0, temperature = 0;
-    for(int t = _t_min; t < _t_max; t++)
+    T current_temperature = 0;
+    for(base_type temperature = _t_min; temperature < _t_max; temperature += _t_step)
     {
         for(auto &s_i: s)
         {
@@ -36,7 +37,7 @@ auto parallel_mars(SquareMatrix<T> &_J_mat,
             current_temperature -= _c_step;
             do
             {
-                for(size_t i = 0; i < phi.size(); i++) // is it 0 or 1?
+                for(size_t i = 0; i < phi.size(); i++)
                 {
                     T sum = 0;
                     for(size_t j = 0; j < _n; j++)
@@ -46,9 +47,13 @@ auto parallel_mars(SquareMatrix<T> &_J_mat,
                     phi[i] = sum + _h[i];
 
                     if(current_temperature > 0)
-                        s_new[i] = _alpha*(-tanh(phi[i] / current_temperature)) + (1 - _alpha)*s[i];
+                    {
+                        s_new[i] = _alpha * (-tanh(phi[i] / current_temperature)) + (1 - _alpha) * s[i];
+                    }
                     else
+                    {
                         s_new[i] = -sign(phi[i]);
+                    }
 
                     if(abs(s_new[i] - s[i]) > d)
                     {
@@ -57,6 +62,8 @@ auto parallel_mars(SquareMatrix<T> &_J_mat,
 
                     s[i] = s_new[i];
                 }
+
+                std::cout << "par! d: " << d << " vs dmin: " << _d_min << std::endl;
             } while(d < _d_min);
         }
     }

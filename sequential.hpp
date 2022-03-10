@@ -21,7 +21,7 @@ auto sequential_mars(SquareMatrix<T> &_J_mat,
     std::vector<T> phi(_n, 0);
 
     T current_temperature = 0, temperature = 0;
-    for(int t = _t_min; t < _t_max; t++)
+    for(int temperature = _t_min; temperature < _t_max; temperature++)
     {
         for(auto &s_i: s)
         {
@@ -57,6 +57,7 @@ auto sequential_mars(SquareMatrix<T> &_J_mat,
 
                     s[i] = s_new[i];
                 }
+                std::cout << "d: " << d << " vs dmin: " << _d_min << std::endl;
             } while(d < _d_min);
         }
     }

@@ -37,13 +37,14 @@ int main(int argc, char **argv) {
         }
 
         const size_t n = J.get_dim_size();
-        int t_min = 0, t_max = 100;
-        base_type c_step = 3;
-        base_type d_min = 10;
-        base_type alpha = 2;
+        base_type t_min = 1, t_max = 10;
+        base_type c_step = 1; // as in the paper
+        base_type d_min = 0.0001; // as in the paper
+        base_type alpha = 0.4;
+        base_type t_step = 1;
         std::vector<base_type> h(n, 0);
 
-        auto parallel_s = sequential_mars(J, h, n, t_min, t_max, c_step, d_min, alpha);
+        auto parallel_s = parallel_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step);
         std::cout << "parallel result: ";
         print(parallel_s);
         std::cout << "parallel energy: " << dot_product(vxm(parallel_s, J), parallel_s) +
@@ -51,7 +52,7 @@ int main(int argc, char **argv) {
 
         if(parser.check())
         {
-            auto sequential_s = sequential_mars(J, h, n, t_min, t_max, c_step, d_min, alpha);
+            auto sequential_s = parallel_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step);
             if(parallel_s == sequential_s)
             {
                 std::cout << "results are correct!" << std::endl;
