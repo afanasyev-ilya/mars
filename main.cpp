@@ -2,6 +2,29 @@
 #include <vector>
 #include <random>
 #include <math.h>
+#include <fstream>
+#include <sstream>
+#include <iomanip>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool is_float(std::string my_string)
+{
+    std::istringstream iss(my_string);
+    float f;
+    iss >> std::noskipws >> f;
+    return iss.eof() && !iss.fail();
+}
+
+double to_float(std::string my_string)
+{
+    std::istringstream iss(my_string);
+    double f = 0;
+    iss >> std::noskipws >> f;
+    return f;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
 class SquareMatrix
@@ -10,7 +33,7 @@ private:
     std::vector<T> data; // use one-dim vector for optimizations
     size_t dim_size;
 public:
-    explicit SquareMatrix(size_t _size): data(_size*_size, 0)
+    explicit SquareMatrix(size_t _size = 1): data(_size*_size, 0)
     {
         dim_size = _size;
     }
@@ -25,25 +48,114 @@ public:
         data[i*dim_size + j] = _val;
     }
 
-    void rand()
+    inline void set(size_t i, T _val)
     {
+        data[i] = _val;
+    }
+
+    void fill_with_rands(size_t &_dim_size)
+    {
+        dim_size = _dim_size;
+        data.resize(dim_size*dim_size);
+
+        std::random_device rd;
+        std::mt19937 rng(rd());
+        std::uniform_real_distribution<T> uni(-1, 1);
+
         for(size_t j = 0; j < dim_size; j++)
         {
             for(size_t i = 0; i < dim_size; i++)
             {
-                if(i > j)
+                if(i >= j) // to ensure it is symmetric
                 {
-                    set(i, j, 0);
+                    T val = uni(rng);
+                    set(i, j, val);
+                    set(j, i, val);
                 }
             }
         }
     }
+
+    void print()
+    {
+        for(size_t j = 0; j < dim_size; j++)
+        {
+            for (size_t i = 0; i < dim_size; i++)
+            {
+                std::cout << get(i, j) << std::setprecision(4) << " ";
+            }
+            std::cout << std::endl;
+        }
+    }
+
+    void read_from_file(const std::string &_file_name)
+    {
+        std::ifstream file_desc;
+        file_desc.open(_file_name);
+
+        std::vector<T> tmp_vals;
+
+        if(file_desc.is_open())
+        {
+            while (!file_desc.eof())
+            {
+                std::string line;
+                file_desc >> line;
+                //std::cout << line << std::endl;
+                if(is_float(line))
+                {
+                    tmp_vals.push_back(to_float(line));
+                }
+            }
+
+            size_t num_elems = tmp_vals.size();
+
+            dim_size = (sqrt(8*num_elems + 1) - 1)/2; // assuming we have just read N*(N+1)/2 elements, and try to find N
+            std::cout << "dim size: " << dim_size << std::endl;
+            std::cout << "elements read: " << num_elems << std::endl;
+            size_t cnt = 0;
+            data.resize(dim_size*dim_size);
+            for(size_t j = 0; j < dim_size; j++)
+            {
+                for (size_t i = 0; i < dim_size; i++)
+                {
+                    if(i >= j)
+                    {
+                        set(i, j, tmp_vals[cnt]);
+                        set(j, i, tmp_vals[cnt]);
+                        cnt++;
+                    }
+                }
+            }
+        }
+        else
+        {
+            throw "mtx file does not exist!";
+        }
+
+        file_desc.close();
+    }
+
+    [[nodiscard]] size_t get_dim_size() const {return dim_size;};
 };
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 template <typename T>
-int sign(T val) {
+void read_from_file(std::vector<T> &_vector, std::ifstream &_file_desc)
+{
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+int sign(T val)
+{
     return (T(0) < val) - (val < T(0));
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
 void print(std::vector<T> &_data)
@@ -52,6 +164,8 @@ void print(std::vector<T> &_data)
         std::cout << i << ' ';
     std::cout << std::endl;
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
 auto vxm(const std::vector<T> &_vector, const SquareMatrix<T> &_matrix)
@@ -67,6 +181,8 @@ auto vxm(const std::vector<T> &_vector, const SquareMatrix<T> &_matrix)
     return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 template <typename T>
 T dot_product(const std::vector<T> &_v1, const std::vector<T> &_v2)
 {
@@ -78,6 +194,8 @@ T dot_product(const std::vector<T> &_v1, const std::vector<T> &_v2)
     return sum;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 template <typename T>
 void read(std::vector<T> &_data)
 {
@@ -85,6 +203,8 @@ void read(std::vector<T> &_data)
         std::cout << i << ' ';
     std::cout << std::endl;
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
 auto seq_mars(SquareMatrix<T> &_J_mat,
@@ -150,24 +270,53 @@ auto seq_mars(SquareMatrix<T> &_J_mat,
     return s;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #define base_type double
 
 int main()
 {
-    size_t n = 10;
-    int t_min = 0, t_max = 10;
-    base_type c_step = 3;
-    base_type d_min = 10;
-    base_type alpha = 2;
+    try
+    {
+        SquareMatrix<base_type> J;
+        if(false)
+        {
+            size_t dim_size = 10;
+            J.fill_with_rands(dim_size);
+        }
+        else
+        {
+            J.read_from_file("test_mat.csv");
+            J.print();
+        }
 
-    std::vector<base_type> h(n, 0);
-    SquareMatrix<base_type> J(n);
+        const size_t n = J.get_dim_size();
 
-    auto s = seq_mars(J, h, n, t_min, t_max, c_step, d_min, alpha);
-    std::cout << "result: ";
-    print(s);
+        int t_min = 0, t_max = 10;
+        base_type c_step = 3;
+        base_type d_min = 10;
+        base_type alpha = 2;
 
-    std::cout << "energy: " << dot_product(vxm(s, J), s) + dot_product(h, s) << std::endl;
+        std::vector<base_type> h(n, 0);
+
+        auto s = seq_mars(J, h, n, t_min, t_max, c_step, d_min, alpha);
+        std::cout << "result: ";
+        print(s);
+
+        std::cout << "energy: " << dot_product(vxm(s, J), s) + dot_product(h, s) << std::endl;
+    }
+    catch (std::string error)
+    {
+        std::cout << error << std::endl;
+    }
+    catch (const char * error)
+    {
+        std::cout << error << std::endl;
+    }
+
 
     return 0;
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
