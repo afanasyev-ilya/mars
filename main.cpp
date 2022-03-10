@@ -291,12 +291,10 @@ int main()
         }
 
         const size_t n = J.get_dim_size();
-
-        int t_min = 0, t_max = 10;
+        int t_min = 0, t_max = 100;
         base_type c_step = 3;
         base_type d_min = 10;
         base_type alpha = 2;
-
         std::vector<base_type> h(n, 0);
 
         auto s = seq_mars(J, h, n, t_min, t_max, c_step, d_min, alpha);
