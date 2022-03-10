@@ -3,15 +3,15 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-auto parallel_mars(SquareMatrix<T> &_J_mat,
-                   std::vector<T> &_h,
-                   size_t _n,
-                   int _t_min,
-                   int _t_max,
-                   T _c_step,
-                   T _d_min,
-                   T _alpha,
-                   T _t_step)
+auto openmp_mars(SquareMatrix<T> &_J_mat,
+                 std::vector<T> &_h,
+                 size_t _n,
+                 int _t_min,
+                 int _t_max,
+                 T _c_step,
+                 T _d_min,
+                 T _alpha,
+                 T _t_step)
 {
     std::random_device rd;
     std::mt19937 rng(rd());
@@ -22,6 +22,7 @@ auto parallel_mars(SquareMatrix<T> &_J_mat,
     std::vector<T> phi(_n, 0);
 
     T current_temperature = 0;
+
     for(base_type temperature = _t_min; temperature < _t_max; temperature += _t_step)
     {
         for(auto &s_i: s)
@@ -37,6 +38,7 @@ auto parallel_mars(SquareMatrix<T> &_J_mat,
             current_temperature -= _c_step;
             do
             {
+                #pragma omp parallel for schedule(static) reduction(max: d)
                 for(size_t i = 0; i < phi.size(); i++)
                 {
                     T sum = 0;
@@ -67,6 +69,26 @@ auto parallel_mars(SquareMatrix<T> &_J_mat,
     }
 
     return s;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+auto parallel_mars(SquareMatrix<T> &_J_mat,
+                   std::vector<T> &_h,
+                   size_t _n,
+                   int _t_min,
+                   int _t_max,
+                   T _c_step,
+                   T _d_min,
+                   T _alpha,
+                   T _t_step)
+{
+    #ifdef __USE_CUDA__
+    return cuda_mars(_J_mat, _h, _n, _t_min, _t_max, _c_step, _d_min, _alpha, _t_step);
+    #else
+    return openmp_mars(_J_mat, _h, _n, _t_min, _t_max, _c_step, _d_min, _alpha, _t_step);
+    #endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
