@@ -245,7 +245,7 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
     T *dev_s, *dev_h, *dev_temperatures;
     SAFE_CALL(cudaMallocManaged((void**)&dev_s, _n*num_blocks*sizeof(T)));
     SAFE_CALL(cudaMallocManaged((void**)&dev_h, _n*sizeof(T)));
-    SAFE_CALL(cudaMallocManaged((void**)&dev_temperatures, NUM_BLOCKS*sizeof(T)));
+    SAFE_CALL(cudaMallocManaged((void**)&dev_temperatures, num_blocks*sizeof(T)));
 
     T *dev_mat;
     SAFE_CALL(cudaMallocManaged((void**)&dev_mat, _n*_n*sizeof(T)));
@@ -253,15 +253,14 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
     SAFE_CALL(cudaMemcpy(dev_h, &(_h[0]), _n*sizeof(T), cudaMemcpyHostToDevice));
 
     double t1 = omp_get_wtime();
-    for(base_type temperature = _t_min; temperature < _t_max; temperature += (_t_step * NUM_BLOCKS))
+    for(base_type temperature = _t_min; temperature < _t_max; temperature += (_t_step * num_blocks))
     {
         gpu_fill_rand(dev_s, _n);
 
         for(int i = 0; i < NUM_BLOCKS; i++)
             dev_temperatures[i] = temperature + _t_step*i;
 
-        int block_size = min((size_t)BLOCK_SIZE, (size_t)_n);
-        SAFE_KERNEL_CALL((mars_mc_parallel_kernel<<<NUM_BLOCKS, block_size>>>(dev_mat,
+        SAFE_KERNEL_CALL((mars_mc_parallel_kernel<<<num_blocks , block_size>>>(dev_mat,
                                  dev_s, dev_h, _n, _c_step, _d_min, _alpha, dev_temperatures)));
     }
     double t2 = omp_get_wtime();

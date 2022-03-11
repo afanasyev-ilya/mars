@@ -7,6 +7,35 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
+T dot_product(const std::vector<T> &_v1, const std::vector<T> &_v2)
+{
+    if(_v1.size() != _v2.size())
+        throw "Incorrect dims in dot product";
+    T sum = 0;
+    for(size_t i = 0; i < _v1.size(); i++)
+        sum += _v1[i] * _v2[i];
+    return sum;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+auto vxm(const std::vector<T> &_vector, const SquareMatrix<T> &_matrix)
+{
+    std::vector<T> result(_vector.size(), 0);
+    for(size_t j = 0; j < result.size(); j++)
+    {
+        T sum = 0;
+        for(size_t i = 0; i < result.size(); i++)
+            sum += _vector[i]*_matrix.get(i, j);
+        result[j] = sum;
+    }
+    return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
 auto sequential_mars(SquareMatrix<T> &_J_mat,
                      std::vector<T> &_h,
                      size_t _n,
@@ -25,6 +54,8 @@ auto sequential_mars(SquareMatrix<T> &_J_mat,
     std::vector<T> s_trial(_n, 0);
     std::vector<T> phi(_n, 0);
 
+    T mean_energy = 0;
+    double num_steps = (_t_max - _t_min)/_t_step;
     double t1 = omp_get_wtime();
     T current_temperature = 0;
     for(base_type temperature = _t_min; temperature < _t_max; temperature += _t_step)
@@ -69,41 +100,16 @@ auto sequential_mars(SquareMatrix<T> &_J_mat,
                 }
             } while(d < _d_min);
         }
+
+        T energy = dot_product(vxm(s, _J_mat), s) + dot_product(_h, s);
+        mean_energy += energy/num_steps;
     }
 
     double t2 = omp_get_wtime();
     std::cout << "CPU calculations finished in " << (t2 - t1) << " seconds" << std::endl;
+    std::cout << "sequential mean energy: " << mean_energy << std::endl;
 
     return s;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-template <typename T>
-auto vxm(const std::vector<T> &_vector, const SquareMatrix<T> &_matrix)
-{
-    std::vector<T> result(_vector.size(), 0);
-    for(size_t j = 0; j < result.size(); j++)
-    {
-        T sum = 0;
-        for(size_t i = 0; i < result.size(); i++)
-            sum += _vector[i]*_matrix.get(i, j);
-        result[j] = sum;
-    }
-    return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-template <typename T>
-T dot_product(const std::vector<T> &_v1, const std::vector<T> &_v2)
-{
-    if(_v1.size() != _v2.size())
-        throw "Incorrect dims in dot product";
-    T sum = 0;
-    for(size_t i = 0; i < _v1.size(); i++)
-        sum += _v1[i] * _v2[i];
-    return sum;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
