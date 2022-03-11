@@ -54,7 +54,7 @@ auto sequential_mars(SquareMatrix<T> &_J_mat,
     std::vector<T> s_trial(_n, 0);
     std::vector<T> phi(_n, 0);
 
-    T mean_energy = 0;
+    T min_energy = std::numeric_limits<T>::max();
     double num_steps = (_t_max - _t_min)/_t_step;
     double t1 = omp_get_wtime();
     T current_temperature = 0;
@@ -102,12 +102,13 @@ auto sequential_mars(SquareMatrix<T> &_J_mat,
         }
 
         T energy = dot_product(vxm(s, _J_mat), s) + dot_product(_h, s);
-        mean_energy += energy/num_steps;
+        if(energy < min_energy)
+            min_energy = energy;
     }
 
     double t2 = omp_get_wtime();
     std::cout << "CPU calculations finished in " << (t2 - t1) << " seconds" << std::endl;
-    std::cout << "CPU mean energy: " << mean_energy << std::endl;
+    std::cout << "CPU min energy: " << min_energy << std::endl;
 
     return s;
 }
