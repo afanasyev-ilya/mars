@@ -1,6 +1,23 @@
 #pragma once
 #include <iostream>
 #include <curand.h>
+#include "safe_calls.hpp"
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+void __global__ randoms_to_range(T *_data, size_t _size)
+{
+    const size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if(idx < _size)
+    {
+        _data[idx] = (_data[idx] - 0.5)*2; // [0, 1) into [-1, 1)
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define BLOCK_SIZE 1024
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -9,14 +26,10 @@ void gpu_fill_rand(double *_data, size_t _size)
     curandGenerator_t randGen;
     curandCreateGenerator(&randGen, CURAND_RNG_PSEUDO_DEFAULT);
     curandGenerateUniformDouble(randGen, _data, _size);
-
-    for(size_t i = 0; i < _size; i++)
-        _data[i] = (_data[i] - 0.5)*2;
-
-    for(size_t i = 0; i < _size; i++)
-        std::cout << _data[i] << " ";
-    std::cout << std::endl;
+    SAFE_KERNEL_CALL((randoms_to_range<<<(_size - 1)/BLOCK_SIZE + 1, BLOCK_SIZE>>>(_data, _size)));
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void cpu_fill_rand(double *_data, size_t _size)
 {
@@ -28,10 +41,6 @@ void cpu_fill_rand(double *_data, size_t _size)
     {
         _data[i] = uni(rng);
     }
-
-    for(size_t i = 0; i < _size; i++)
-        std::cout << _data[i] << " ";
-    std::cout << std::endl;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -94,12 +103,12 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
         }
     }
 
-    cudaFree(s);
-    cudaFree(s_new);
-    cudaFree(phi);
-
     std::vector<T> result(_n);
     cudaMemcpy(&result[0], s, sizeof(T)*_n, cudaMemcpyDeviceToHost);
+    cudaFree(s_new);
+    cudaFree(phi);
+    cudaFree(s);
+
     return result;
 }
 
