@@ -7,10 +7,9 @@ class SquareMatrix
 {
 private:
     std::vector<T> data; // use one-dim vector for optimizations
-    std::vector<int> unempty;
     size_t dim_size;
 public:
-    explicit SquareMatrix(size_t _size = 1): data(_size*_size, 0), unempty(_size*(_size+1), 0)
+    explicit SquareMatrix(size_t _size = 1): data(_size*_size, 0)
     {
         dim_size = _size;
     }

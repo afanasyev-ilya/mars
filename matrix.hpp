@@ -21,14 +21,6 @@ void SquareMatrix<T>::fill_with_rands(size_t &_dim_size)
                 T val = uni(rng);
                 set(i, j, val);
                 set(j, i, val);
-
-                if (val != 0.)
-                {
-                    unempty[i * (dim_size + 1)]++;
-                    unempty[i * (dim_size + 1) + unempty[i * (dim_size + 1)]] = j;
-                    unempty[j * (dim_size + 1)]++;
-                    unempty[j * (dim_size + 1) + unempty[j * (dim_size + 1)]] = i;
-                }
             }
         }
     }
@@ -46,17 +38,6 @@ void SquareMatrix<T>::print()
             for (size_t i = 0; i < dim_size; i++)
             {
                 std::cout << get(i, j) << std::setprecision(4) << " ";
-            }
-            std::cout << std::endl;
-        }
-
-        std::cout << " ---------------------" << std::endl;
-
-        for (size_t i = 0; i < dim_size; i++)
-        {
-            for(size_t j = 0; j < dim_size + 1; j++)
-            {
-                std::cout << unempty[i*(dim_size+1) + j] << " ";
             }
             std::cout << std::endl;
         }
@@ -148,14 +129,6 @@ void SquareMatrix<T>::read_from_file(const std::string &_file_name)
 
                     set(i, j, val);
                     set(j, i, val);
-
-                    if (val != 0.)
-                    {
-                        unempty[i * (dim_size + 1)]++;
-                        unempty[i * (dim_size + 1) + unempty[i * (dim_size + 1)]] = j;
-                        unempty[j * (dim_size + 1)]++;
-                        unempty[j * (dim_size + 1) + unempty[j * (dim_size + 1)]] = i;
-                    }
                 }
             }
         }
