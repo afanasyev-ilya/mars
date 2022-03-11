@@ -42,17 +42,27 @@ void gpu_fill_rand(double *_data, size_t _size)
     SAFE_KERNEL_CALL((randoms_to_range_kernel<<<(_size - 1)/BLOCK_SIZE + 1, BLOCK_SIZE>>>(_data, _size)));
 }
 
+void gpu_fill_rand(float *_data, size_t _size)
+{
+    curandGenerator_t randGen;
+    curandCreateGenerator(&randGen, CURAND_RNG_PSEUDO_DEFAULT);
+    curandGenerateUniform(randGen, _data, _size);
+    SAFE_KERNEL_CALL((randoms_to_range_kernel<<<(_size - 1)/BLOCK_SIZE + 1, BLOCK_SIZE>>>(_data, _size)));
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-__global__ void mars_mc_parallel_kernel(float* _mat,
-                                        float* _spins,
+template <typename T>
+__global__ void mars_mc_parallel_kernel(T* _mat,
+                                        T* _spins,
+                                        T *_h,
                                         int _size,
-                                        float* _temp,
-                                        float _temp_step,
-                                        float* _phi,
+                                        T* _temp,
+                                        T _temp_step,
+                                        T* _phi,
                                         bool* _continue_iteration,
-                                        float _min_diff,
-                                        float _alpha)
+                                        T _min_diff,
+                                        T _alpha)
 {
     int blockId = blockIdx.x;
     int tid = threadIdx.x;
@@ -76,12 +86,13 @@ __global__ void mars_mc_parallel_kernel(float* _mat,
             {
                 __syncthreads();
 
+                /* their code */
                 // Transitional value assignment
-                int wIndex = tid;
+                /*int wIndex = tid;
                 while (wIndex < _size)
                 {
                     _phi[wIndex + blockId * _size] =
-                            _spins[_size + blockId * _size] * _mat[spin_id * _size + _size];
+                            _spins[spin_id + blockId * _size] * _mat[spin_id * _size + _size];
 
                     wIndex = wIndex + blockDim.x;
                 }
@@ -101,13 +112,23 @@ __global__ void mars_mc_parallel_kernel(float* _mat,
                     offset *= 2;
                     __syncthreads();
                 }
-                __syncthreads();
+                __syncthreads();*/
+
+                if(tid == 0)
+                {
+                    T reduction_result = 0;
+                    for(size_t j = 0; j < _size; j++)
+                    {
+                        reduction_result += _mat[_size * spin_id + j] * _spins[blockId * _size + j];
+                    }
+                    _phi[blockId * _size + spin_id] = reduction_result + _h[spin_id];
+                }
 
                 // Mean-field calculation complete - write new spin and delta
                 if (tid == 0) 
                 {
-                    float mean_field = _phi[blockId * _size];
-                    float old = _spins[spin_id + blockId * _size];
+                    T mean_field = _phi[blockId * _size];
+                    T old = _spins[spin_id + blockId * _size];
                     if (_temp[blockId] > 0)
                     {
                         _spins[spin_id + blockId * _size] = -1 * tanh(mean_field / _temp[blockId]) * _alpha
@@ -141,7 +162,7 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
                T _t_step)
 {
     std::cout << "Using CUDA mars (parallelism for different MC steps" << std::endl;
-    T *dev_s, *dev_s_trial, *dev_phi;
+    T *dev_s, *dev_s_trial, *dev_phi, *dev_h;
     bool *dev_continue_iteration;
     T* dev_temp;
     SAFE_CALL(cudaMallocManaged((void**)&dev_s, _n*sizeof(T)));
@@ -149,10 +170,12 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
     SAFE_CALL(cudaMallocManaged((void**)&dev_phi, _n*sizeof(T)));
     SAFE_CALL(cudaMallocManaged((void**)&dev_continue_iteration, sizeof(bool)));
     SAFE_CALL(cudaMallocManaged((void**)&dev_temp, sizeof(T)));
+    SAFE_CALL(cudaMallocManaged((void**)&dev_h, _n*sizeof(T)));
 
     T *dev_mat;
     SAFE_CALL(cudaMallocManaged((void**)&dev_mat, _n*_n*sizeof(T)));
     SAFE_CALL(cudaMemcpy(dev_mat, _J_mat.get_ptr(), _n*_n*sizeof(T), cudaMemcpyHostToDevice));
+    SAFE_CALL(cudaMemcpy(dev_h, &(_h[0]), _n*sizeof(T), cudaMemcpyHostToDevice));
 
     T current_temperature = 0;
     double t1 = omp_get_wtime();
@@ -162,8 +185,9 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
 
         current_temperature = temperature; // t' = t
 
-        //SAFE_KERNEL_CALL((mars_mc_parallel_kernel<<<1, min(BLOCK_SIZE, _n)>>>(dev_mat,
-        //                         dev_s, _n, dev_temp, _c_step, dev_phi, dev_continue_iteration, _d_min, _alpha)));
+        int block_size = min((size_t)BLOCK_SIZE, (size_t)_n);
+        SAFE_KERNEL_CALL((mars_mc_parallel_kernel<<<1, block_size>>>(dev_mat,
+                                 dev_s, dev_h, _n, dev_temp, _c_step, dev_phi, dev_continue_iteration, _d_min, _alpha)));
     }
     double t2 = omp_get_wtime();
     std::cout << "GPU calculations finished in " << (t2 - t1) << " seconds" << std::endl;
@@ -177,6 +201,7 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
     SAFE_CALL(cudaFree(dev_mat));
     SAFE_CALL(cudaFree(dev_temp));
     SAFE_CALL(cudaFree(dev_continue_iteration));
+    SAFE_CALL(cudaFree(dev_h));
 
     return result;
 }
