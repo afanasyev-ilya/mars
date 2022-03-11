@@ -58,14 +58,16 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
                                         T *_h,
                                         int _size,
                                         T* _temp,
-                                        T _temp_step,
+                                        T _c_step,
                                         T* _phi,
                                         bool* _continue_iteration,
-                                        T _min_diff,
+                                        T _d_min,
                                         T _alpha)
 {
     int block_id = blockIdx.x;
     int tid = threadIdx.x;
+
+    /*__shared__ int continue_iteration[1];
 
     do
     {
@@ -80,41 +82,11 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
             
             // By default current iteration is the last one
             if (tid == 0)
-                _continue_iteration[block_id] = false;
+                continue_iteration[0] = false;
 
             for (int spin_id = 0; spin_id < _size; ++spin_id)
             {
                 __syncthreads();
-
-                /* their code */
-                // Transitional value assignment
-                int wIndex = tid;
-                while (wIndex < _size)
-                {
-                    _phi[wIndex + block_id * _size] =
-                            _spins[spin_id + block_id * _size] * _mat[spin_id * _size + _size];
-
-                    wIndex = wIndex + blockDim.x;
-                }
-                __syncthreads();
-
-                // Parallelized mean-field computation
-                long long offset = 1;
-                while (offset < _size)
-                {
-                    wIndex = tid;
-                    while ((wIndex * 2 + 1) * offset < _size)
-                    {
-                        _phi[wIndex * 2 * offset + block_id * _size] += _phi[(wIndex * 2 + 1) * offset
-                                                                           + block_id * _size];
-                        wIndex = wIndex + blockDim.x;
-                    }
-                    offset *= 2;
-                    __syncthreads();
-                }
-                __syncthreads();
-
-                /*__syncthreads();
 
                 if(tid == 0)
                 {
@@ -126,7 +98,7 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
                     _phi[block_id * _size + spin_id] = reduction_result + _h[spin_id];
                 }
 
-                __syncthreads();*/
+                __syncthreads();
 
                 // Mean-field calculation complete - write new spin and delta
                 if (tid == 0) 
@@ -143,13 +115,57 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
                     else
                         _spins[spin_id + block_id * _size] = 1;
 
-                    if (_min_diff < fabs(old - _spins[spin_id + block_id * _size]))
-                        _continue_iteration[block_id] = true; // Too big delta. One more iteration needed
+                    if (fabs(old - _spins[spin_id + block_id * _size]) > _min_diff)
+                        continue_iteration[0] = true; // Too big delta. One more iteration needed
                 }
                 __syncthreads();
             }
-        } while (_continue_iteration[block_id]);
-    } while (_temp[block_id] >= 0);
+            if (tid == 0)
+                printf("cont = %d\n", continue_iteration[0]);
+        } while (continue_iteration[0]);
+    } while (_temp[block_id] >= 0);*/
+
+    if(tid == 0)
+    {
+        T current_temperature = _temp[block_id];
+
+        while(current_temperature > 0)
+        {
+            T d = 0;
+            current_temperature -= _c_step;
+
+            do
+            {
+                for(size_t i = 0; i < _size; i++)
+                {
+                    T sum = 0;
+                    for(size_t j = 0; j < _size; j++)
+                    {
+                        sum += _mat[i*_size + j] * _spins[j];
+                    }
+                    _phi[i] = sum + _h[i];
+
+                    T s_trial = 0;
+
+                    if(current_temperature > 0)
+                    {
+                        s_trial = _alpha * (-tanh(_phi[i] / current_temperature)) + (1 - _alpha) * _spins[i];
+                    }
+                    else if (_phi[i] > 0)
+                        s_trial = -1;
+                    else
+                        s_trial = 1;
+
+                    if(fabs(s_trial - _spins[i]) > d)
+                    {
+                        d = abs(s_trial - _spins[i]);
+                    }
+
+                    _spins[i] = s_trial;
+                }
+            } while(d < _d_min);
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -165,7 +181,7 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
                T _alpha,
                T _t_step)
 {
-    std::cout << "Using CUDA mars (parallelism for different MC steps" << std::endl;
+    std::cout << "Using CUDA mars (parallelism for different MC steps)" << std::endl;
     T *dev_s, *dev_s_trial, *dev_phi, *dev_h;
     bool *dev_continue_iteration;
     T* dev_temp;
@@ -183,15 +199,19 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
 
     T current_temperature = 0;
     double t1 = omp_get_wtime();
-    for(base_type temperature = _t_min; temperature < _t_max; temperature += _t_step)
+    for(base_type temperature = _t_min; temperature < _t_max; temperature += (_t_step * NUM_BLOCKS))
     {
         gpu_fill_rand(dev_s, _n);
 
         current_temperature = temperature; // t' = t
 
+        for(int i = 0; i < NUM_BLOCKS; i++)
+            dev_temp[i] = temperature + _t_step*i;
+
         int block_size = min((size_t)BLOCK_SIZE, (size_t)_n);
-        SAFE_KERNEL_CALL((mars_mc_parallel_kernel<<<1, block_size>>>(dev_mat,
+        SAFE_KERNEL_CALL((mars_mc_parallel_kernel<<<NUM_BLOCKS, block_size>>>(dev_mat,
                                  dev_s, dev_h, _n, dev_temp, _c_step, dev_phi, dev_continue_iteration, _d_min, _alpha)));
+        std::cout << "block portion done" << std::endl;
     }
     double t2 = omp_get_wtime();
     std::cout << "GPU calculations finished in " << (t2 - t1) << " seconds" << std::endl;

@@ -5,3 +5,5 @@
 //#define __USE_CUDA__
 #define __USE_CUBLAS__
 #define MAX_PRINTING_SIZE 1000
+
+#define NUM_BLOCKS 1
