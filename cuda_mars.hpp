@@ -269,21 +269,35 @@ __device__ T dot_product_mxv(T* _mat, T* _spin, size_t _size)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+__device__ static float atomicMin(float* address, float val)
+{
+    int* address_as_i = (int*) address;
+    int old = *address_as_i, assumed;
+    do {
+        assumed = old;
+        old = ::atomicCAS(address_as_i, assumed,
+                          __float_as_int(::fminf(val, __int_as_float(assumed))));
+    } while (assumed != old);
+    return __int_as_float(old);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 template <typename T>
-__global__ void estimate_mean_energy_kernel(T* _mat,
+__global__ void estimate_min_energy_kernel(T* _mat,
                                             T *_spins,
                                             T *_h,
                                             size_t _size,
                                             size_t _num_iters,
-                                            T *_mean_energy)
+                                            float *_min_energy)
 {
     int tid = threadIdx.x;
     int block_id = blockIdx.x;
 
     T* cur_spin = &_spins[_size * block_id];
 
-    T energy = dot_product(_h, cur_spin, _size) + dot_product_mxv(_mat, cur_spin, _size);
-    atomicAdd(&_mean_energy[0], energy/_num_iters);
+    float energy = dot_product(_h, cur_spin, _size) + dot_product_mxv(_mat, cur_spin, _size);
+    atomicMin(&_min_energy[0], energy);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -311,12 +325,13 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
     std::cout << "estimated number of blocks: " << num_blocks << std::endl;
 
     std::cout << "Using CUDA mars (parallelism for different MC steps)" << std::endl;
-    T *dev_s, *dev_h, *dev_temperatures, *mean_energy;
+    T *dev_s, *dev_h, *dev_temperatures;
+    float *min_energy;
     SAFE_CALL(cudaMallocManaged((void**)&dev_s, _n*num_blocks*sizeof(T)));
     SAFE_CALL(cudaMallocManaged((void**)&dev_h, _n*sizeof(T)));
     SAFE_CALL(cudaMallocManaged((void**)&dev_temperatures, num_blocks*sizeof(T)));
-    SAFE_CALL(cudaMallocManaged((void**)&mean_energy, sizeof(T)));
-    mean_energy[0] = 0;
+    SAFE_CALL(cudaMallocManaged((void**)&min_energy, sizeof(float)));
+    min_energy[0] = std::numeric_limits<T>::max();
 
     T *dev_mat;
     SAFE_CALL(cudaMallocManaged((void**)&dev_mat, _n*_n*sizeof(T)));
@@ -334,12 +349,12 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
         SAFE_KERNEL_CALL((mars_mc_parallel_kernel<<<num_blocks , block_size>>>(dev_mat,
                                  dev_s, dev_h, _n, _c_step, _d_min, _alpha, dev_temperatures)));
 
-        SAFE_KERNEL_CALL((estimate_mean_energy_kernel<<<num_blocks , block_size>>>(dev_mat,
-                                    dev_s, dev_h, _n, num_steps, mean_energy)));
+        SAFE_KERNEL_CALL((estimate_min_energy_kernel<<<num_blocks , block_size>>>(dev_mat,
+                                    dev_s, dev_h, _n, num_steps, min_energy)));
     }
     double t2 = omp_get_wtime();
     std::cout << "CUDA calculations finished in " << (t2 - t1) << " seconds" << std::endl;
-    std::cout << "CUDA mean energy: " << mean_energy[0] << std::endl;
+    std::cout << "CUDA min energy: " << min_energy[0] << std::endl;
 
     std::vector<T> result(_n);
 
@@ -348,7 +363,7 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
     SAFE_CALL(cudaFree(dev_mat));
     SAFE_CALL(cudaFree(dev_h));
     SAFE_CALL(cudaFree(dev_temperatures));
-    SAFE_CALL(cudaFree(mean_energy));
+    SAFE_CALL(cudaFree(min_energy));
 
     return result;
 }
