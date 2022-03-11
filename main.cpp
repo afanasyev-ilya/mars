@@ -12,8 +12,8 @@
 #include "helpers.hpp"
 #include "matrix.h"
 #include "cmd_parser.h"
-#include "parallel.hpp"
-#include "sequential.hpp"
+#include "parallel_mars.hpp"
+#include "sequential_mars.hpp"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
