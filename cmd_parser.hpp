@@ -100,6 +100,8 @@ void Parser::parse_args(int _argc, char **_argv)
             std::cout << "-d_min [N], specifies d_min (optional, default is 0.0001)" << std::endl;
             std::cout << "-alpha [N], specifies alpha (optional, default is 0.5)" << std::endl;
             std::cout << "-t_step [N], specifies step between t_min and t_max (optional, default is 0.1)" << std::endl;
+            std::cout << "-help, prints this message" << std::endl;
+
             throw "Help is requested, aborting...";
         }
     }

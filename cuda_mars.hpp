@@ -23,6 +23,22 @@ __forceinline__ __device__ unsigned warp_id()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+double free_memory_size()
+{
+    int num_gpus;
+    size_t free, total;
+    cudaGetDeviceCount( &num_gpus );
+    for ( int gpu_id = 0; gpu_id < num_gpus; gpu_id++ ) {
+        cudaSetDevice( gpu_id );
+        int id;
+        cudaGetDevice( &id );
+        cudaMemGetInfo( &free, &total );
+        return free/1e9; // converting to GB
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 template <typename T>
 void __global__ randoms_to_range_kernel(T *_data, size_t _size)
 {
@@ -325,8 +341,9 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
                T _alpha,
                T _t_step)
 {
-    size_t max_blocks_mem_fit = (MEM_SIZE*1024*1024 - _n*_n*sizeof(T))/ (_n *sizeof(T));
-    std::cout << "we can store " << max_blocks_mem_fit << " spins in " << MEM_SIZE << " GB of available memory" << std::endl;
+    double free_mem = 0.5/*not to waste all*/*free_memory_size();
+    size_t max_blocks_mem_fit = (free_mem*1024*1024*1024 - _n*_n*sizeof(T))/ (_n *sizeof(T));
+    std::cout << "we can simultaneously store " << max_blocks_mem_fit << " spins in " << free_mem << " GB of available memory" << std::endl;
 
     size_t num_steps = (_t_max - _t_min) / _t_step;
     std::cout << "number of temperatures steps: " << num_steps << std::endl;
