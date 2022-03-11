@@ -64,14 +64,14 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
                                         T _min_diff,
                                         T _alpha)
 {
-    int blockId = blockIdx.x;
+    int block_id = blockIdx.x;
     int tid = threadIdx.x;
 
     do
     {
         // Lessen temperature
         if (tid == 0)
-            _temp[blockId] = _temp[blockId] - _temp_step;
+            _temp[block_id] = _temp[block_id] - _temp_step;
 
         // Stabilize
         do
@@ -80,7 +80,7 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
             
             // By default current iteration is the last one
             if (tid == 0)
-                _continue_iteration[blockId] = false;
+                _continue_iteration[block_id] = false;
 
             for (int spin_id = 0; spin_id < _size; ++spin_id)
             {
@@ -91,8 +91,8 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
                 /*int wIndex = tid;
                 while (wIndex < _size)
                 {
-                    _phi[wIndex + blockId * _size] =
-                            _spins[spin_id + blockId * _size] * _mat[spin_id * _size + _size];
+                    _phi[wIndex + block_id * _size] =
+                            _spins[spin_id + block_id * _size] * _mat[spin_id * _size + _size];
 
                     wIndex = wIndex + blockDim.x;
                 }
@@ -105,8 +105,8 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
                     wIndex = tid;
                     while ((wIndex * 2 + 1) * offset < _size)
                     {
-                        _phi[wIndex * 2 * offset + blockId * _size] += _phi[(wIndex * 2 + 1) * offset
-                                                                           + blockId * _size];
+                        _phi[wIndex * 2 * offset + block_id * _size] += _phi[(wIndex * 2 + 1) * offset
+                                                                           + block_id * _size];
                         wIndex = wIndex + blockDim.x;
                     }
                     offset *= 2;
@@ -119,33 +119,33 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
                     T reduction_result = 0;
                     for(size_t j = 0; j < _size; j++)
                     {
-                        reduction_result += _mat[_size * spin_id + j] * _spins[blockId * _size + j];
+                        reduction_result += _mat[_size * spin_id + j] * _spins[block_id * _size + j];
                     }
-                    _phi[blockId * _size + spin_id] = reduction_result + _h[spin_id];
+                    _phi[block_id * _size + spin_id] = reduction_result + _h[spin_id];
                 }
 
                 // Mean-field calculation complete - write new spin and delta
                 if (tid == 0) 
                 {
-                    T mean_field = _phi[blockId * _size];
-                    T old = _spins[spin_id + blockId * _size];
-                    if (_temp[blockId] > 0)
+                    T mean_field = _phi[block_id * _size + spin_id];
+                    T old = _spins[spin_id + block_id * _size];
+                    if (_temp[block_id] > 0)
                     {
-                        _spins[spin_id + blockId * _size] = -1 * tanh(mean_field / _temp[blockId]) * _alpha
-                                     + _spins[spin_id + blockId * _size] * (1 - _alpha);
+                        _spins[spin_id + block_id * _size] = -1 * tanh(mean_field / _temp[block_id]) * _alpha
+                                     + _spins[spin_id + block_id * _size] * (1 - _alpha);
                     }
                     else if (mean_field > 0)
-                        _spins[spin_id + blockId * _size] = -1;
+                        _spins[spin_id + block_id * _size] = -1;
                     else
-                        _spins[spin_id + blockId * _size] = 1;
+                        _spins[spin_id + block_id * _size] = 1;
 
-                    if (_min_diff < fabs(old - _spins[spin_id + blockId * _size]))
-                        _continue_iteration[blockId] = true; // Too big delta. One more iteration needed
+                    if (_min_diff < fabs(old - _spins[spin_id + block_id * _size]))
+                        _continue_iteration[block_id] = true; // Too big delta. One more iteration needed
                 }
                 __syncthreads();
             }
-        } while (_continue_iteration[blockId]);
-    } while (_temp[blockId] >= 0);
+        } while (_continue_iteration[block_id]);
+    } while (_temp[block_id] >= 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

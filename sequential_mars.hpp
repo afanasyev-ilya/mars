@@ -2,6 +2,10 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include <omp.h>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 template <typename T>
 auto sequential_mars(SquareMatrix<T> &_J_mat,
                      std::vector<T> &_h,
@@ -21,6 +25,7 @@ auto sequential_mars(SquareMatrix<T> &_J_mat,
     std::vector<T> s_trial(_n, 0);
     std::vector<T> phi(_n, 0);
 
+    double t1 = omp_get_wtime();
     T current_temperature = 0;
     for(base_type temperature = _t_min; temperature < _t_max; temperature += _t_step)
     {
@@ -65,6 +70,9 @@ auto sequential_mars(SquareMatrix<T> &_J_mat,
             } while(d < _d_min);
         }
     }
+
+    double t2 = omp_get_wtime();
+    std::cout << "CPU calculations finished in " << (t2 - t1) << " seconds" << std::endl;
 
     return s;
 }
