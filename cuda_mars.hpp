@@ -281,6 +281,18 @@ __device__ static float atomicMin(float* address, float val)
     return __int_as_float(old);
 }
 
+__device__ static float atomicMin(double* address, double val)
+{
+    unsigned long long* address_as_i = (unsigned long long*) address;
+    unsigned long long old = *address_as_i, assumed;
+    do {
+        assumed = old;
+        old = ::atomicCAS(address_as_i, assumed,
+                          __double_as_longlong(::fminf(val, __longlong_as_double (assumed))));
+    } while (assumed != old);
+    return __longlong_as_double(old);
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
@@ -289,14 +301,14 @@ __global__ void estimate_min_energy_kernel(T* _mat,
                                             T *_h,
                                             size_t _size,
                                             size_t _num_iters,
-                                            float *_min_energy)
+                                            T *_min_energy)
 {
     int tid = threadIdx.x;
     int block_id = blockIdx.x;
 
     T* cur_spin = &_spins[_size * block_id];
 
-    float energy = dot_product(_h, cur_spin, _size) + dot_product_mxv(_mat, cur_spin, _size);
+    T energy = dot_product(_h, cur_spin, _size) + dot_product_mxv(_mat, cur_spin, _size);
     atomicMin(&_min_energy[0], energy);
 }
 
@@ -326,11 +338,11 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
 
     std::cout << "Using CUDA mars (parallelism for different MC steps)" << std::endl;
     T *dev_s, *dev_h, *dev_temperatures;
-    float *min_energy;
+    T *min_energy;
     SAFE_CALL(cudaMallocManaged((void**)&dev_s, _n*num_blocks*sizeof(T)));
     SAFE_CALL(cudaMallocManaged((void**)&dev_h, _n*sizeof(T)));
     SAFE_CALL(cudaMallocManaged((void**)&dev_temperatures, num_blocks*sizeof(T)));
-    SAFE_CALL(cudaMallocManaged((void**)&min_energy, sizeof(float)));
+    SAFE_CALL(cudaMallocManaged((void**)&min_energy, sizeof(T)));
     min_energy[0] = std::numeric_limits<T>::max();
 
     T *dev_mat;

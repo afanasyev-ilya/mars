@@ -58,7 +58,7 @@ int main(int argc, char **argv)
         {
             auto sequential_energy = sequential_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step);
 
-            if(parallel_energy == sequential_energy)
+            if(fabs(parallel_energy - sequential_energy) < 0.001) // numeric_limits::epslion does not fit here
             {
                 std::cout << "energies are correct!" << std::endl;
             }
