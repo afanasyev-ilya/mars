@@ -124,6 +124,29 @@ __inline__ __device__ _T block_reduce_sum(_T val)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+template <typename _T>
+__forceinline__ __device__ _T block_reduce_shmem(_T val, int tid)
+{
+    __shared__ _T sdata[BLOCK_SIZE];
+
+    sdata[tid] = val;
+    __syncthreads();
+
+    // do reduction in shared mem
+    for (unsigned int s = blockDim.x / 2; s > 0; s >>= 1)
+    {
+        if (tid < s)
+        {
+            sdata[tid] += sdata[tid + s];
+        }
+        __syncthreads();
+    }
+
+    return sdata[0];
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 template <typename T>
 __global__ void mars_mc_parallel_kernel(T* _mat,
                                         T* _spins,
@@ -166,15 +189,14 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
                     sum += _mat[i*_size + j] * _spins[j + block_id * _size];
                 }
 
-                /*T new_sum = block_reduce_sum(_mat[i*_size + tid] * _spins[tid + block_id * _size]);
-
-                if(tid == 0)
+                T val = 0;
+                size_t offset = tid;
+                while(offset < _size)
                 {
-                    if(sum != new_sum)
-                        printf("%lf %lf error!\n", sum, new_sum);
-                    else
-                        printf("%lf %lf correct!\n", sum, new_sum);
-                }*/
+                    val += _mat[i*_size + tid] * _spins[tid + block_id * _size];
+                    offset += blockDim.x;
+                }
+                T new_sum = block_reduce_sum(val);
 
                 T mean_field = sum + _h[i];
 
@@ -222,7 +244,7 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
     size_t num_steps = (_t_max - _t_min) / _t_step;
     std::cout << "number of temperatures steps: " << num_steps << std::endl;
     std::cout << "matrix size: " << _n << std::endl;
-    int block_size = min((size_t)BLOCK_SIZE, _n);
+    int block_size = min((size_t)BLOCK_SIZE, (size_t)pow(2, ceil(log(_n)/log(2))));
     int num_blocks = min(num_steps, max_blocks_mem_fit);
     std::cout << "estimated block size: " << block_size << std::endl;
     std::cout << "estimated number of blocks: " << num_blocks << std::endl;
