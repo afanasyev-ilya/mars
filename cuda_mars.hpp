@@ -183,20 +183,20 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
 
             for(size_t i = 0; i < _size; i++)
             {
-                T sum = 0;
+                /*T sum = 0;
                 for(size_t j = 0; j < _size; j++)
                 {
                     sum += _mat[i*_size + j] * _spins[j + block_id * _size];
-                }
+                }*/
 
                 T val = 0;
                 size_t offset = tid;
                 while(offset < _size)
                 {
-                    val += _mat[i*_size + tid] * _spins[tid + block_id * _size];
+                    val += _mat[i*_size + offset] * _spins[offset + block_id * _size];
                     offset += blockDim.x;
                 }
-                T new_sum = block_reduce_sum(val);
+                T sum = block_reduce_sum(val);
 
                 T mean_field = sum + _h[i];
 
@@ -228,6 +228,67 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
+__device__ T dot_product(T *v1, T* v2, size_t _size)
+{
+    int tid = threadIdx.x;
+
+    T val = 0;
+    size_t offset = tid;
+    while(offset < _size)
+    {
+        val += v1[offset]*v2[offset];
+        offset += blockDim.x;
+    }
+    T dot = block_reduce_sum(val);
+    return dot;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+__device__ T dot_product_mxv(T* _mat, T* _spin, size_t _size)
+{
+    int tid = threadIdx.x;
+
+    T val = 0;
+    size_t offset = tid;
+    while(offset < _size)
+    {
+        T vxm_val = 0;
+        for(size_t i = 0; i < _size; i++)
+        {
+            vxm_val += _spin[i]*_mat[i*_size + offset];
+        }
+        val += _spin[offset] * vxm_val;
+        offset += blockDim.x;
+    }
+
+    T dot = block_reduce_sum(val);
+    return dot;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+__global__ void estimate_mean_energy_kernel(T* _mat,
+                                            T *_spins,
+                                            T *_h,
+                                            size_t _size,
+                                            size_t _num_iters,
+                                            T *_mean_energy)
+{
+    int tid = threadIdx.x;
+    int block_id = blockIdx.x;
+
+    T* cur_spin = &_spins[_size * block_id];
+
+    T energy = dot_product(_h, cur_spin, _size) + dot_product_mxv(_mat, cur_spin, _size);
+    atomicAdd(&_mean_energy[0], energy/_num_iters);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
 auto cuda_mars(SquareMatrix<T> &_J_mat,
                std::vector<T> &_h,
                size_t _n,
@@ -250,10 +311,12 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
     std::cout << "estimated number of blocks: " << num_blocks << std::endl;
 
     std::cout << "Using CUDA mars (parallelism for different MC steps)" << std::endl;
-    T *dev_s, *dev_h, *dev_temperatures;
+    T *dev_s, *dev_h, *dev_temperatures, *mean_energy;
     SAFE_CALL(cudaMallocManaged((void**)&dev_s, _n*num_blocks*sizeof(T)));
     SAFE_CALL(cudaMallocManaged((void**)&dev_h, _n*sizeof(T)));
     SAFE_CALL(cudaMallocManaged((void**)&dev_temperatures, num_blocks*sizeof(T)));
+    SAFE_CALL(cudaMallocManaged((void**)&mean_energy, sizeof(T)));
+    mean_energy[0] = 0;
 
     T *dev_mat;
     SAFE_CALL(cudaMallocManaged((void**)&dev_mat, _n*_n*sizeof(T)));
@@ -270,9 +333,13 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
 
         SAFE_KERNEL_CALL((mars_mc_parallel_kernel<<<num_blocks , block_size>>>(dev_mat,
                                  dev_s, dev_h, _n, _c_step, _d_min, _alpha, dev_temperatures)));
+
+        SAFE_KERNEL_CALL((estimate_mean_energy_kernel<<<num_blocks , block_size>>>(dev_mat,
+                                    dev_s, dev_h, _n, num_steps, mean_energy)));
     }
     double t2 = omp_get_wtime();
-    std::cout << "GPU calculations finished in " << (t2 - t1) << " seconds" << std::endl;
+    std::cout << "CUDA calculations finished in " << (t2 - t1) << " seconds" << std::endl;
+    std::cout << "CUDA mean energy: " << mean_energy[0] << std::endl;
 
     std::vector<T> result(_n);
 
@@ -281,6 +348,7 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
     SAFE_CALL(cudaFree(dev_mat));
     SAFE_CALL(cudaFree(dev_h));
     SAFE_CALL(cudaFree(dev_temperatures));
+    SAFE_CALL(cudaFree(mean_energy));
 
     return result;
 }

@@ -51,32 +51,32 @@ void Parser::parse_args(int _argc, char **_argv)
 
         if ((option == "-t_min"))
         {
-            t_min = atoi(_argv[++i]);
+            t_min = to_float(std::string(_argv[++i]));
         }
 
         if ((option == "-t_max"))
         {
-            t_max = atoi(_argv[++i]);
+            t_max = to_float(std::string(_argv[++i]));
         }
 
         if ((option == "-c_step"))
         {
-            c_step = atoi(_argv[++i]);
+            c_step = to_float(std::string(_argv[++i]));
         }
 
         if ((option == "-d_min"))
         {
-            d_min = atoi(_argv[++i]);
+            d_min = to_float(std::string(_argv[++i]));
         }
 
         if ((option == "-alpha") || (option == "-a"))
         {
-            alpha = atoi(_argv[++i]);
+            alpha = to_float(std::string(_argv[++i]));
         }
 
         if ((option == "-t_step"))
         {
-            t_step = atoi(_argv[++i]);
+            t_step = to_float(std::string(_argv[++i]));
         }
 
         if ((option == "-help") || (option == "-h"))
@@ -100,6 +100,13 @@ void Parser::parse_args(int _argc, char **_argv)
         std::cout << "Error! matrix dimension is unset";
         throw "Aborting...";
     }
+
+    std::cout << "t_min:" << t_min << std::endl;
+    std::cout << "t_max:" << t_max << std::endl;
+    std::cout << "c_step:" << c_step << std::endl;
+    std::cout << "d_min:" << d_min << std::endl;
+    std::cout << "alpha:" << alpha << std::endl;
+    std::cout << "t_step:" << t_step << std::endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
