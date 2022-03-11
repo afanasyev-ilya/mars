@@ -2,6 +2,7 @@
 #include <iostream>
 #include <curand.h>
 #include "safe_calls.hpp"
+#include <omp.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -60,7 +61,7 @@ __global__ void mars_mc_parallel_kernel(float* _mat,
     {
         // Lessen temperature
         if (tid == 0)
-            _temp[blockId] = temp[blockId] - _temp_step;
+            _temp[blockId] = _temp[blockId] - _temp_step;
 
         // Stabilize
         do
@@ -71,7 +72,7 @@ __global__ void mars_mc_parallel_kernel(float* _mat,
             if (tid == 0)
                 _continue_iteration[blockId] = false;
 
-            for (int spinId = 0; spinId < size; ++spinId)
+            for (int spin_id = 0; spin_id < _size; ++spin_id)
             {
                 __syncthreads();
 
@@ -79,8 +80,8 @@ __global__ void mars_mc_parallel_kernel(float* _mat,
                 int wIndex = tid;
                 while (wIndex < _size)
                 {
-                    _phi[wIndex + blockId * size] =
-                            spins[_size + blockId * size] * mat[spinId * size + _size];
+                    _phi[wIndex + blockId * _size] =
+                            _spins[_size + blockId * _size] * _mat[spin_id * _size + _size];
 
                     wIndex = wIndex + blockDim.x;
                 }
@@ -93,8 +94,8 @@ __global__ void mars_mc_parallel_kernel(float* _mat,
                     wIndex = tid;
                     while ((wIndex * 2 + 1) * offset < _size)
                     {
-                        _phi[wIndex * 2 * offset + blockId * size] += _phi[(wIndex * 2 + 1) * offset
-                                                                           + blockId * size];
+                        _phi[wIndex * 2 * offset + blockId * _size] += _phi[(wIndex * 2 + 1) * offset
+                                                                           + blockId * _size];
                         wIndex = wIndex + blockDim.x;
                     }
                     offset *= 2;
@@ -105,19 +106,19 @@ __global__ void mars_mc_parallel_kernel(float* _mat,
                 // Mean-field calculation complete - write new spin and delta
                 if (tid == 0) 
                 {
-                    float meanField = _phi[blockId * size];
-                    float old = spins[spinId + blockId * size];
+                    float mean_field = _phi[blockId * _size];
+                    float old = _spins[spin_id + blockId * _size];
                     if (_temp[blockId] > 0)
                     {
-                        spins[spinId + blockId * size] = -1 * tanh(meanField / _temp[blockId]) * linearCoef
-                                     + spins[spinId + blockId * size] * (1 - linearCoef);
+                        _spins[spin_id + blockId * _size] = -1 * tanh(mean_field / _temp[blockId]) * _alpha
+                                     + _spins[spin_id + blockId * _size] * (1 - _alpha);
                     }
-                    else if (meanField > 0)
-                        spins[spinId + blockId * size] = -1;
+                    else if (mean_field > 0)
+                        _spins[spin_id + blockId * _size] = -1;
                     else
-                        spins[spinId + blockId * size] = 1;
+                        _spins[spin_id + blockId * _size] = 1;
 
-                    if (_min_diff < fabs(old - spins[spinId + blockId * size]))
+                    if (_min_diff < fabs(old - _spins[spin_id + blockId * _size]))
                         _continue_iteration[blockId] = true; // Too big delta. One more iteration needed
                 }
                 __syncthreads();
@@ -139,40 +140,43 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
                T _alpha,
                T _t_step)
 {
+    std::cout << "Using CUDA mars (parallelism for different MC steps" << std::endl;
     T *dev_s, *dev_s_trial, *dev_phi;
     bool *dev_continue_iteration;
     T* dev_temp;
-    SAVE_CALL(cudaMallocManaged((void**)&s, _n*sizeof(T)));
-    SAVE_CALL(cudaMallocManaged((void**)&s_trial, _n*sizeof(T)));
-    SAVE_CALL(cudaMallocManaged((void**)&phi, _n*sizeof(T)));
-    SAVE_CALL(cudaMallocManaged((void**)&dev_continue_iteration, sizeof(bool)));
-    SAVE_CALL(cudaMallocManaged((void**)&dev_temp, sizeof(T)));
+    SAFE_CALL(cudaMallocManaged((void**)&dev_s, _n*sizeof(T)));
+    SAFE_CALL(cudaMallocManaged((void**)&dev_s_trial, _n*sizeof(T)));
+    SAFE_CALL(cudaMallocManaged((void**)&dev_phi, _n*sizeof(T)));
+    SAFE_CALL(cudaMallocManaged((void**)&dev_continue_iteration, sizeof(bool)));
+    SAFE_CALL(cudaMallocManaged((void**)&dev_temp, sizeof(T)));
 
     T *dev_mat;
-    SAVE_CALL(cudaMallocManaged((void**)&dev_mat, _n*_n*sizeof(T)));
-    SAVE_CALL(cudaMemcpy(dev_mat, _J_mat.get_ptr(), _n*_n*sizeof(T), cudaMemcpyHostToDevice));
+    SAFE_CALL(cudaMallocManaged((void**)&dev_mat, _n*_n*sizeof(T)));
+    SAFE_CALL(cudaMemcpy(dev_mat, _J_mat.get_ptr(), _n*_n*sizeof(T), cudaMemcpyHostToDevice));
 
     T current_temperature = 0;
+    double t1 = omp_get_wtime();
     for(base_type temperature = _t_min; temperature < _t_max; temperature += _t_step)
     {
         gpu_fill_rand(dev_s, _n);
 
         current_temperature = temperature; // t' = t
 
-        SAFE_KERNEL_CALL((mars_mc_parallel_kernel<<<1, min(BLOCK_SIZE, _n)>>>(dev_mat,
-                                 dev_s, _n, dev_temp, _c_step, dev_phi, dev_continue_iteration, _d_min, _alpha)));
+        //SAFE_KERNEL_CALL((mars_mc_parallel_kernel<<<1, min(BLOCK_SIZE, _n)>>>(dev_mat,
+        //                         dev_s, _n, dev_temp, _c_step, dev_phi, dev_continue_iteration, _d_min, _alpha)));
     }
-    std::cout << "done!" << std::endl;
+    double t2 = omp_get_wtime();
+    std::cout << "GPU calculations finished in " << (t2 - t1) << " seconds" << std::endl;
 
     std::vector<T> result(_n);
 
-    SAVE_CALL(cudaMemcpy(&result[0], s, sizeof(T)*_n, cudaMemcpyDeviceToHost));
-    SAVE_CALL(cudaFree(dev_s_trial));
-    SAVE_CALL(cudaFree(dev_phi));
-    SAVE_CALL(cudaFree(dev_s));
-    SAVE_CALL(cudaFree(dev_mat));
-    SAVE_CALL(cudaFree(dev_temp));
-    SAVE_CALL(cudaFree(dev_continue_iteration));
+    SAFE_CALL(cudaMemcpy(&result[0], dev_s, sizeof(T)*_n, cudaMemcpyDeviceToHost));
+    SAFE_CALL(cudaFree(dev_s_trial));
+    SAFE_CALL(cudaFree(dev_phi));
+    SAFE_CALL(cudaFree(dev_s));
+    SAFE_CALL(cudaFree(dev_mat));
+    SAFE_CALL(cudaFree(dev_temp));
+    SAFE_CALL(cudaFree(dev_continue_iteration));
 
     return result;
 }
