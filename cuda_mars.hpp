@@ -149,12 +149,15 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
         if(tid == 0)
         {
             current_temperature[0] -= _c_step;
-            d[0] = 0;
         }
-        __syncthreads();
 
         do
         {
+            __syncthreads();
+            if(tid == 0)
+                d[0] = 0;
+            __syncthreads();
+
             for(size_t i = 0; i < _size; i++)
             {
                 T sum = 0;
@@ -190,7 +193,7 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
 
                     if(fabs(s_trial - _spins[i + block_id * _size]) > d[0])
                     {
-                        d[0] = abs(s_trial - _spins[i + block_id * _size]);
+                        d[0] = fabs(s_trial - _spins[i + block_id * _size]);
                     }
                     _spins[i + block_id * _size] = s_trial;
                 }
@@ -220,7 +223,7 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
     std::cout << "number of temperatures steps: " << num_steps << std::endl;
     std::cout << "matrix size: " << _n << std::endl;
     int block_size = min((size_t)BLOCK_SIZE, _n);
-    int num_blocks = 10;//min(num_steps, max_blocks_mem_fit);
+    int num_blocks = min(num_steps, max_blocks_mem_fit);
     std::cout << "estimated block size: " << block_size << std::endl;
     std::cout << "estimated number of blocks: " << num_blocks << std::endl;
 
@@ -238,14 +241,13 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
     double t1 = omp_get_wtime();
     for(base_type temperature = _t_min; temperature < _t_max; temperature += (_t_step * num_blocks))
     {
-        gpu_fill_rand(dev_s, _n);
+        gpu_fill_rand(dev_s, _n*num_blocks);
 
         for(int i = 0; i < num_blocks; i++)
             dev_temperatures[i] = temperature + _t_step*i;
 
         SAFE_KERNEL_CALL((mars_mc_parallel_kernel<<<num_blocks , block_size>>>(dev_mat,
                                  dev_s, dev_h, _n, _c_step, _d_min, _alpha, dev_temperatures)));
-        std::cout << "group done" << std::endl;
     }
     double t2 = omp_get_wtime();
     std::cout << "GPU calculations finished in " << (t2 - t1) << " seconds" << std::endl;
