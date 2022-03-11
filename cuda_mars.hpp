@@ -1,18 +1,37 @@
 #pragma once
-#include <thrust/host_vector.h>
-#include <thrust/device_vector.h>
+#include <iostream>
 #include <curand.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <typename T>
-void gpu_fill_rand(T *_data, size_t _size)
+void gpu_fill_rand(double *_data, size_t _size)
 {
-    // Create a pseudo-random number generator
-    curandGenerator_t prng;
-    curandCreateGenerator(&prng, CURAND_RNG_PSEUDO_DEFAULT);
-    curandSetPseudoRandomGeneratorSeed(prng, (unsigned long long) clock());
-    curandGenerateUniform(prng, _data, _size);
+    curandGenerator_t randGen;
+    curandCreateGenerator(&randGen, CURAND_RNG_PSEUDO_DEFAULT);
+    curandGenerateUniformDouble(randGen, _data, _size);
+
+    for(size_t i = 0; i < _size; i++)
+        _data[i] = (_data[i] - 0.5)*2;
+
+    for(size_t i = 0; i < _size; i++)
+        std::cout << _data[i] << " ";
+    std::cout << std::endl;
+}
+
+void cpu_fill_rand(double *_data, size_t _size)
+{
+    std::random_device rd;
+    std::mt19937 rng(rd());
+    std::uniform_real_distribution<double> uni(-1, 1);
+
+    for (size_t i = 0; i < _size; i++)
+    {
+        _data[i] = uni(rng);
+    }
+
+    for(size_t i = 0; i < _size; i++)
+        std::cout << _data[i] << " ";
+    std::cout << std::endl;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -28,17 +47,60 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
                T _alpha,
                T _t_step)
 {
-    thrust::device_vector<T> s(_n);
-    thrust::device_vector<T> s_new(_n);
+    T *s, *s_new, *phi;
+    cudaMallocManaged((void**)&s, _n*sizeof(T));
+    cudaMallocManaged((void**)&s_new, _n*sizeof(T));
+    cudaMallocManaged((void**)&phi, _n*sizeof(T));
 
     T current_temperature = 0;
     for(base_type temperature = _t_min; temperature < _t_max; temperature += _t_step)
     {
-        GPU_fill_rand(thrust::raw_pointer_cast(&s[0]), s.size());
-        for(int i = 0; i < 3; i++)
-            std::cout << s[i] << " ";
-        std::cout << std::endl;
+        cpu_fill_rand(s, _n);
+
+        current_temperature = temperature; // t' = t
+
+        while(current_temperature > 0)
+        {
+            T d = 0;
+            current_temperature -= _c_step;
+            do
+            {
+                for(size_t i = 0; i < _n; i++)
+                {
+                    T sum = 0;
+                    for(size_t j = 0; j < _n; j++)
+                    {
+                        sum += _J_mat.get(i, j) * s[j];
+                    }
+                    phi[i] = sum + _h[i];
+
+                    if(current_temperature > 0)
+                    {
+                        s_new[i] = _alpha * (-tanh(phi[i] / current_temperature)) + (1 - _alpha) * s[i];
+                    }
+                    else
+                    {
+                        s_new[i] = -sign(phi[i]);
+                    }
+
+                    if(abs(s_new[i] - s[i]) > d)
+                    {
+                        d = abs(s_new[i] - s[i]);
+                    }
+
+                    s[i] = s_new[i];
+                }
+            } while(d < _d_min);
+        }
     }
+
+    cudaFree(s);
+    cudaFree(s_new);
+    cudaFree(phi);
+
+    std::vector<T> result(_n);
+    cudaMemcpy(&result[0], s, sizeof(T)*_n, cudaMemcpyDeviceToHost);
+    return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

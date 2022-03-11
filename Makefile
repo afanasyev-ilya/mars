@@ -8,7 +8,7 @@ ifeq ($(COMPILER),g++)
 endif
 
 ifeq ($(COMPILER),nvcc)
-	CUDA_DIR = /opt/cuda/cuda-10.1/
+	CUDA_DIR = /usr/local/cuda/
 	CUDA_COMPILER = $(CUDA_DIR)/bin/nvcc
 	Include_Path = -I $(CUDA_DIR)/include -I ../external_libraries/cub -I ../
 	Flags = -O2 -D __USE_CUDA__ -x cu -w -m64 -std=c++11 -Xptxas -dlcm=ca --expt-extended-lambda -gencode arch=compute_60,code=sm_60 -gencode arch=compute_70,code=sm_70 -Xcompiler -fopenmp
@@ -32,8 +32,8 @@ mars_cuda: create_folders main.o
 # CPPs
 ##########
 
-main.o: main.cpp
-	$(CXX) $(Flags) $(Include_Path) -c main.cpp -o object_files/main.o
+main.o: main.cu
+	$(CXX) $(Flags) $(Include_Path) -c main.cu -o object_files/main.o
 
 create_folders:
 	-mkdir -p ./bin
