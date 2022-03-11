@@ -46,3 +46,30 @@ void print(std::vector<T> &_data)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+void read_from_file(std::vector<T> &_v, const std::string &_file_name)
+{
+    std::ifstream file_desc;
+    file_desc.open(_file_name);
+
+    if (file_desc.is_open())
+    {
+        for (size_t i = 0; i < _v.size(); i++)
+        {
+            std::string line;
+            if (file_desc.eof())
+            {
+                std::cout << "Error! h-vector dimension and number of elements in file mismatches" << std::endl;
+                throw "Aborting...";
+            }
+            file_desc >> line;
+            if(is_float(line))
+            {
+                _v[i] = to_float(line);
+            }
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

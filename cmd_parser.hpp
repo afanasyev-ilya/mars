@@ -13,6 +13,7 @@ Parser::Parser()
     d_min = 0.0001; // as in the paper
     alpha = 0.5;
     t_step = 0.01;
+    h_vector_provided = false;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -37,6 +38,13 @@ void Parser::parse_args(int _argc, char **_argv)
         if ((option == "-mtx") || (option == "-mtx-file"))
         {
             mtx_file_name = std::string(_argv[++i]);
+            h_vector_provided = false;
+        }
+
+        if ((option == "-hmtx") || (option == "-mtx-file"))
+        {
+            mtx_file_name = std::string(_argv[++i]);
+            h_vector_provided = true;
         }
 
         if ((option == "-check"))
@@ -83,6 +91,7 @@ void Parser::parse_args(int _argc, char **_argv)
         {
             std::cout << "-dim [N], specifies the size of input matrix (required argument)" << std::endl;
             std::cout << "-mtx [file_name], specifies the name of input file, which contains the matrix only (without h vector). If not specified, random matrix is generated. H-vector initialized with zeros. (optional argument)" << std::endl;
+            std::cout << "-hmtx [file_name], similar to mtx, but file must also provide h vector. (optional argument)" << std::endl;
             std::cout << "-check, executes verification with sequential algorithm on CPU (turned off by default)" << std::endl;
 
             std::cout << "-t_min [N], specifies t_min (optional, default is 1)" << std::endl;

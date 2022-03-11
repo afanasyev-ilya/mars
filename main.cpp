@@ -34,7 +34,7 @@ int main(int argc, char **argv)
         }
         else
         {
-            J.read_from_file(parser.get_mtx_file_name());
+            J.read_from_file(parser.get_mtx_file_name(), parser.get_h_vector_provided());
             J.print();
         }
 
@@ -46,6 +46,11 @@ int main(int argc, char **argv)
         base_type t_step = parser.get_t_step();
 
         std::vector<base_type> h(n, 0);
+        if(parser.get_h_vector_provided())
+        {
+            read_from_file(h, parser.get_mtx_file_name());
+            print(h);
+        }
 
         auto parallel_s = parallel_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step);
         std::cout << "parallel result: ";

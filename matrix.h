@@ -33,7 +33,7 @@ public:
 
     void print();
 
-    void read_from_file(const std::string &_file_name);
+    void read_from_file(const std::string &_file_name, bool _skip_h_vector = false);
 
     T* get_ptr() {return &data[0];};
 

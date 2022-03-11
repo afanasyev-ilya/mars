@@ -101,13 +101,27 @@ void SquareMatrix<T>::read_from_file(const std::string &_file_name)
 }*/
 
 template <typename T>
-void SquareMatrix<T>::read_from_file(const std::string &_file_name)
+void SquareMatrix<T>::read_from_file(const std::string &_file_name, bool _skip_h_vector)
 {
     std::ifstream file_desc;
     file_desc.open(_file_name);
 
     if(file_desc.is_open())
     {
+        if(_skip_h_vector)
+        {
+            for (size_t i = 0; i < dim_size; i++)
+            {
+                std::string line;
+                if(file_desc.eof())
+                {
+                    std::cout << "Error! matrix dimension and number of elements in file mismatches" << std::endl;
+                    throw "Aborting...";
+                }
+                file_desc >> line;
+            }
+        }
+
         for(size_t j = 0; j < dim_size; j++)
         {
             for (size_t i = 0; i < dim_size; i++)
