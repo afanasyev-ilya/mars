@@ -6,6 +6,23 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+__forceinline__ __device__ unsigned lane_id()
+{
+    unsigned ret;
+    asm volatile ("mov.u32 %0, %laneid;" : "=r"(ret));
+    return ret;
+}
+
+__forceinline__ __device__ unsigned warp_id()
+{
+    // this is not equal to threadIdx.x / 32
+    unsigned ret;
+    asm volatile ("mov.u32 %0, %warpid;" : "=r"(ret));
+    return ret;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 template <typename T>
 void __global__ randoms_to_range_kernel(T *_data, size_t _size)
 {
@@ -50,6 +67,80 @@ void gpu_fill_rand(float *_data, size_t _size)
     SAFE_KERNEL_CALL((randoms_to_range_kernel<<<(_size - 1)/BLOCK_SIZE + 1, BLOCK_SIZE>>>(_data, _size)));
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#if __CUDA_ARCH__ >= 700
+#define FULL_MASK 0xffffffff
+#endif
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename _T>
+static __device__ __forceinline__ _T shfl_down( _T r, int offset )
+{
+#if __CUDA_ARCH__ >= 700
+    return __shfl_down_sync(FULL_MASK, r, offset );
+#elif __CUDA_ARCH__ >= 300
+    return __shfl_down( r, offset );
+#else
+    return 0.0f;
+#endif
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 600
+#else
+static __inline__ __device__ double atomicAdd(double *address, double val)
+{
+    unsigned long long int* address_as_ull = (unsigned long long int*)address;
+    unsigned long long int old = *address_as_ull, assumed;
+    if (val==0.0)
+      return __longlong_as_double(old);
+    do {
+      assumed = old;
+      old = atomicCAS(address_as_ull, assumed, __double_as_longlong(val +__longlong_as_double(assumed)));
+    }
+    while (assumed != old);
+    return __longlong_as_double(old);
+}
+#endif
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename _T>
+__inline__ __device__ _T warp_reduce_sum(_T val)
+{
+    for (int offset = warpSize/2; offset > 0; offset /= 2)
+        val += shfl_down(val, offset);
+    return val;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename _T>
+__inline__ __device__ _T block_reduce_sum(_T val)
+{
+    static __shared__ _T shared[32]; // Shared mem for 32 partial sums
+    int lane =  lane_id();
+    int wid =  warp_id();
+
+    val = warp_reduce_sum(val);     // Each warp performs partial reduction
+
+    if (lane==0)
+    shared[wid]=val; // Write reduced value to shared memory
+
+    __syncthreads();              // Wait for all partial reductions
+
+    //read from shared memory only if that warp existed
+    val = (threadIdx.x < blockDim.x / warpSize) ? shared[lane] : 0;
+
+    if(wid == 0)
+    val = warp_reduce_sum(val); //Final reduce within first warp
+
+    return val;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
@@ -64,106 +155,6 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
 {
     int block_id = blockIdx.x;
     int tid = threadIdx.x;
-
-    /*__shared__ int continue_iteration[1];
-
-    do
-    {
-        // Lessen temperature
-        if (tid == 0)
-            _temp[block_id] = _temp[block_id] - _temp_step;
-
-        // Stabilize
-        do
-        {
-            __syncthreads();
-            
-            // By default current iteration is the last one
-            if (tid == 0)
-                continue_iteration[0] = false;
-
-            for (int spin_id = 0; spin_id < _size; ++spin_id)
-            {
-                __syncthreads();
-
-                if(tid == 0)
-                {
-                    T reduction_result = 0;
-                    for(size_t j = 0; j < _size; j++)
-                    {
-                        reduction_result += _mat[_size * spin_id + j] * _spins[block_id * _size + j];
-                    }
-                    _phi[block_id * _size + spin_id] = reduction_result + _h[spin_id];
-                }
-
-                __syncthreads();
-
-                // Mean-field calculation complete - write new spin and delta
-                if (tid == 0) 
-                {
-                    T mean_field = _phi[block_id * _size + spin_id];
-                    T old = _spins[spin_id + block_id * _size];
-                    if (_temp[block_id] > 0)
-                    {
-                        _spins[spin_id + block_id * _size] = -1 * tanh(mean_field / _temp[block_id]) * _alpha
-                                     + _spins[spin_id + block_id * _size] * (1 - _alpha);
-                    }
-                    else if (mean_field > 0)
-                        _spins[spin_id + block_id * _size] = -1;
-                    else
-                        _spins[spin_id + block_id * _size] = 1;
-
-                    if (fabs(old - _spins[spin_id + block_id * _size]) > _min_diff)
-                        continue_iteration[0] = true; // Too big delta. One more iteration needed
-                }
-                __syncthreads();
-            }
-            if (tid == 0)
-                printf("cont = %d\n", continue_iteration[0]);
-        } while (continue_iteration[0]);
-    } while (_temp[block_id] >= 0);*/
-
-    /*if(tid == 0)
-    {
-        T current_temperature = _temp[block_id];
-
-        while(current_temperature > 0)
-        {
-            T d = 0;
-            current_temperature -= _c_step;
-
-            do
-            {
-                for(size_t i = 0; i < _size; i++)
-                {
-                    T sum = 0;
-                    for(size_t j = 0; j < _size; j++)
-                    {
-                        sum += _mat[i*_size + j] * _spins[j];
-                    }
-                    _phi[i] = sum + _h[i];
-
-                    T s_trial = 0;
-
-                    if(current_temperature > 0)
-                    {
-                        s_trial = _alpha * (-tanh(_phi[i] / current_temperature)) + (1 - _alpha) * _spins[i];
-                    }
-                    else if (_phi[i] > 0)
-                        s_trial = -1;
-                    else
-                        s_trial = 1;
-
-                    if(fabs(s_trial - _spins[i]) > d)
-                    {
-                        d = abs(s_trial - _spins[i]);
-                    }
-
-                    _spins[i] = s_trial;
-                }
-            } while(d < _d_min);
-        }
-    }*/
 
     __shared__ T current_temperature[1];
     __shared__ T d[1];
