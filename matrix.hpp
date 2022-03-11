@@ -50,6 +50,7 @@ void SquareMatrix<T>::print()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/*
 template <typename T>
 void SquareMatrix<T>::read_from_file(const std::string &_file_name)
 {
@@ -87,6 +88,47 @@ void SquareMatrix<T>::read_from_file(const std::string &_file_name)
                     set(i, j, tmp_vals[cnt]);
                     set(j, i, tmp_vals[cnt]);
                     cnt++;
+                }
+            }
+        }
+    }
+    else
+    {
+        throw "mtx file does not exist!";
+    }
+
+    file_desc.close();
+}*/
+
+template <typename T>
+void SquareMatrix<T>::read_from_file(const std::string &_file_name)
+{
+    std::ifstream file_desc;
+    file_desc.open(_file_name);
+
+    if(file_desc.is_open())
+    {
+        for(size_t j = 0; j < dim_size; j++)
+        {
+            for (size_t i = 0; i < dim_size; i++)
+            {
+                if(i >= j)
+                {
+                    std::string line;
+                    if(file_desc.eof())
+                    {
+                        std::cout << "Error! matrix dimension and number of elements in file mismatches" << std::endl;
+                        throw "Aborting...";
+                    }
+                    file_desc >> line;
+                    T val = 0;
+                    if(is_float(line))
+                    {
+                        val = to_float(line);
+                    }
+
+                    set(i, j, val);
+                    set(j, i, val);
                 }
             }
         }

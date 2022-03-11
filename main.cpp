@@ -17,13 +17,14 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
     try
     {
         Parser parser;
         parser.parse_args(argc, argv);
 
-        SquareMatrix<base_type> J;
+        SquareMatrix<base_type> J(parser.get_mtx_dim());
         if(parser.use_rand_mtx())
         {
             std::cout << "Generating random matrix of size " << parser.get_mtx_dim() << std::endl;
@@ -37,7 +38,7 @@ int main(int argc, char **argv) {
         }
 
         const size_t n = J.get_dim_size();
-        base_type t_min = 1, t_max = 10;
+        base_type t_min = 1, t_max = 20;
         base_type c_step = 1; // as in the paper
         base_type d_min = 0.0001; // as in the paper
         base_type alpha = 0.5;
@@ -76,8 +77,6 @@ int main(int argc, char **argv) {
                 print(sequential_s);
             }
         }
-
-
     }
     catch (std::string error)
     {

@@ -42,7 +42,7 @@ auto sequential_mars(SquareMatrix<T> &_J_mat,
                     T sum = 0;
                     for(size_t j = 0; j < _n; j++)
                     {
-                        sum = _J_mat.get(i, j) * s[j];
+                        sum += _J_mat.get(i, j) * s[j];
                     }
                     phi[i] = sum + _h[i];
 

@@ -22,7 +22,6 @@ auto openmp_mars(SquareMatrix<T> &_J_mat,
     std::vector<T> phi(_n, 0);
 
     T current_temperature = 0;
-
     for(base_type temperature = _t_min; temperature < _t_max; temperature += _t_step)
     {
         for(auto &s_i: s)
@@ -38,13 +37,12 @@ auto openmp_mars(SquareMatrix<T> &_J_mat,
             current_temperature -= _c_step;
             do
             {
-                #pragma omp parallel for schedule(static) reduction(max: d)
                 for(size_t i = 0; i < phi.size(); i++)
                 {
                     T sum = 0;
                     for(size_t j = 0; j < _n; j++)
                     {
-                        sum = _J_mat.get(i, j) * s[j];
+                        sum += _J_mat.get(i, j) * s[j];
                     }
                     phi[i] = sum + _h[i];
 
