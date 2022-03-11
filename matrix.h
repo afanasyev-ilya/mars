@@ -35,6 +35,8 @@ public:
 
     void read_from_file(const std::string &_file_name);
 
+    T* get_ptr() {return &data[0];};
+
     [[nodiscard]] inline size_t get_dim_size() const {return dim_size;};
 };
 

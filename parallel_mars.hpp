@@ -39,7 +39,7 @@ auto openmp_mars(SquareMatrix<T> &_J_mat,
     std::uniform_real_distribution<T> uni(-1, 1);
 
     std::vector<T> s(_n, 0);
-    std::vector<T> s_new(_n, 0);
+    std::vector<T> s_trial(_n, 0);
     std::vector<T> phi(_n, 0);
 
     T current_temperature = 0;
@@ -69,19 +69,19 @@ auto openmp_mars(SquareMatrix<T> &_J_mat,
 
                     if(current_temperature > 0)
                     {
-                        s_new[i] = _alpha * (-tanh(phi[i] / current_temperature)) + (1 - _alpha) * s[i];
+                        s_trial[i] = _alpha * (-tanh(phi[i] / current_temperature)) + (1 - _alpha) * s[i];
                     }
                     else
                     {
-                        s_new[i] = -sign(phi[i]);
+                        s_trial[i] = -sign(phi[i]);
                     }
 
-                    if(abs(s_new[i] - s[i]) > d)
+                    if(abs(s_trial[i] - s[i]) > d)
                     {
-                        d = abs(s_new[i] - s[i]);
+                        d = abs(s_trial[i] - s[i]);
                     }
 
-                    s[i] = s_new[i];
+                    s[i] = s_trial[i];
                 }
             } while(d < _d_min);
         }

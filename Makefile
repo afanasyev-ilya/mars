@@ -32,8 +32,8 @@ mars_cuda: create_folders main.o
 # CPPs
 ##########
 
-main.o: main.cu
-	$(CXX) $(Flags) $(Include_Path) -c main.cu -o object_files/main.o
+main.o: main.cpp
+	$(CXX) $(Flags) $(Include_Path) -c main.cpp -o object_files/main.o
 
 create_folders:
 	-mkdir -p ./bin
