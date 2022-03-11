@@ -89,25 +89,6 @@ static __device__ __forceinline__ _T shfl_down( _T r, int offset )
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 600
-#else
-static __inline__ __device__ double atomicAdd(double *address, double val)
-{
-    unsigned long long int* address_as_ull = (unsigned long long int*)address;
-    unsigned long long int old = *address_as_ull, assumed;
-    if (val==0.0)
-      return __longlong_as_double(old);
-    do {
-      assumed = old;
-      old = atomicCAS(address_as_ull, assumed, __double_as_longlong(val +__longlong_as_double(assumed)));
-    }
-    while (assumed != old);
-    return __longlong_as_double(old);
-}
-#endif
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 template <typename _T>
 __inline__ __device__ _T warp_reduce_sum(_T val)
 {
@@ -122,13 +103,13 @@ template <typename _T>
 __inline__ __device__ _T block_reduce_sum(_T val)
 {
     static __shared__ _T shared[32]; // Shared mem for 32 partial sums
-    int lane =  lane_id();
-    int wid =  warp_id();
+    int lane =  threadIdx.x % 32;
+    int wid =  threadIdx.x / 32;
 
     val = warp_reduce_sum(val);     // Each warp performs partial reduction
 
     if (lane==0)
-    shared[wid]=val; // Write reduced value to shared memory
+        shared[wid]=val; // Write reduced value to shared memory
 
     __syncthreads();              // Wait for all partial reductions
 
@@ -136,7 +117,7 @@ __inline__ __device__ _T block_reduce_sum(_T val)
     val = (threadIdx.x < blockDim.x / warpSize) ? shared[lane] : 0;
 
     if(wid == 0)
-    val = warp_reduce_sum(val); //Final reduce within first warp
+        val = warp_reduce_sum(val); //Final reduce within first warp
 
     return val;
 }
@@ -179,8 +160,19 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
                 T sum = 0;
                 for(size_t j = 0; j < _size; j++)
                 {
-                    sum += _mat[i*_size + j] * _spins[j];
+                    sum += _mat[i*_size + j] * _spins[j + block_id * _size];
                 }
+
+                /*T new_sum = block_reduce_sum(_mat[i*_size + tid] * _spins[tid + block_id * _size]);
+
+                if(tid == 0)
+                {
+                    if(sum != new_sum)
+                        printf("%lf %lf error!\n", sum, new_sum);
+                    else
+                        printf("%lf %lf correct!\n", sum, new_sum);
+                }*/
+
                 T mean_field = sum + _h[i];
 
                 if(tid == 0)
@@ -189,18 +181,18 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
 
                     if(current_temperature[0] > 0)
                     {
-                        s_trial = _alpha * (-tanh(mean_field / current_temperature[0])) + (1 - _alpha) * _spins[i];
+                        s_trial = _alpha * (-tanh(mean_field / current_temperature[0])) + (1 - _alpha) * _spins[i + block_id * _size];
                     }
                     else if (mean_field > 0)
                         s_trial = -1;
                     else
                         s_trial = 1;
 
-                    if(fabs(s_trial - _spins[i]) > d[0])
+                    if(fabs(s_trial - _spins[i + block_id * _size]) > d[0])
                     {
-                        d[0] = abs(s_trial - _spins[i]);
+                        d[0] = abs(s_trial - _spins[i + block_id * _size]);
                     }
-                    _spins[i] = s_trial;
+                    _spins[i + block_id * _size] = s_trial;
                 }
             }
             __syncthreads();
@@ -228,7 +220,7 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
     std::cout << "number of temperatures steps: " << num_steps << std::endl;
     std::cout << "matrix size: " << _n << std::endl;
     int block_size = min((size_t)BLOCK_SIZE, _n);
-    int num_blocks = min(num_steps, max_blocks_mem_fit);
+    int num_blocks = 10;//min(num_steps, max_blocks_mem_fit);
     std::cout << "estimated block size: " << block_size << std::endl;
     std::cout << "estimated number of blocks: " << num_blocks << std::endl;
 
@@ -248,11 +240,12 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
     {
         gpu_fill_rand(dev_s, _n);
 
-        for(int i = 0; i < NUM_BLOCKS; i++)
+        for(int i = 0; i < num_blocks; i++)
             dev_temperatures[i] = temperature + _t_step*i;
 
         SAFE_KERNEL_CALL((mars_mc_parallel_kernel<<<num_blocks , block_size>>>(dev_mat,
                                  dev_s, dev_h, _n, _c_step, _d_min, _alpha, dev_temperatures)));
+        std::cout << "group done" << std::endl;
     }
     double t2 = omp_get_wtime();
     std::cout << "GPU calculations finished in " << (t2 - t1) << " seconds" << std::endl;
