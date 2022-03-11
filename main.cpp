@@ -30,6 +30,7 @@ int main(int argc, char **argv)
             std::cout << "Generating random matrix of size " << parser.get_mtx_dim() << std::endl;
             size_t dim_size = parser.get_mtx_dim();
             J.fill_with_rands(dim_size);
+            J.print();
         }
         else
         {

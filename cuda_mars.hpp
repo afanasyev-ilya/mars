@@ -88,7 +88,7 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
 
                 /* their code */
                 // Transitional value assignment
-                /*int wIndex = tid;
+                int wIndex = tid;
                 while (wIndex < _size)
                 {
                     _phi[wIndex + block_id * _size] =
@@ -112,7 +112,9 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
                     offset *= 2;
                     __syncthreads();
                 }
-                __syncthreads();*/
+                __syncthreads();
+
+                /*__syncthreads();
 
                 if(tid == 0)
                 {
@@ -123,6 +125,8 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
                     }
                     _phi[block_id * _size + spin_id] = reduction_result + _h[spin_id];
                 }
+
+                __syncthreads();*/
 
                 // Mean-field calculation complete - write new spin and delta
                 if (tid == 0) 
