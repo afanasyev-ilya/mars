@@ -6,7 +6,7 @@ Parser::Parser()
 {
     mtx_file_name = "";
     do_check = false;
-    mtx_dim = 10;
+    mtx_dim = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -42,6 +42,12 @@ void Parser::parse_args(int _argc, char **_argv)
         {
             mtx_dim = atoi(_argv[++i]);
         }
+    }
+
+    if(mtx_dim == 0)
+    {
+        std::cout << "Error! matrix dimension is unset";
+        throw "Aborting...";
     }
 }
 
