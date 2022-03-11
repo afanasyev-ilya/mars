@@ -38,11 +38,11 @@ int main(int argc, char **argv)
         }
 
         const size_t n = J.get_dim_size();
-        base_type t_min = 1, t_max = 20;
+        base_type t_min = 1, t_max = 10;
         base_type c_step = 1; // as in the paper
         base_type d_min = 0.0001; // as in the paper
-        base_type alpha = 0.5;
-        base_type t_step = 1;
+        base_type alpha = 0.7;
+        base_type t_step = 0.01;
         std::vector<base_type> h(n, 0);
 
         auto parallel_s = parallel_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step);
