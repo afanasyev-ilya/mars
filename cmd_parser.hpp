@@ -12,7 +12,7 @@ Parser::Parser()
     c_step = 1; // as in the paper
     d_min = 0.0001; // as in the paper
     alpha = 0.5;
-    t_step = 0.01;
+    t_step = 0.001;
     h_vector_provided = false;
 }
 
