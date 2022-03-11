@@ -110,7 +110,7 @@ auto sequential_mars(SquareMatrix<T> &_J_mat,
     std::cout << "CPU calculations finished in " << (t2 - t1) << " seconds" << std::endl;
     std::cout << "CPU min energy: " << min_energy << std::endl;
 
-    return s;
+    return min_energy;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

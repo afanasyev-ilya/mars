@@ -363,9 +363,10 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
     SAFE_CALL(cudaFree(dev_mat));
     SAFE_CALL(cudaFree(dev_h));
     SAFE_CALL(cudaFree(dev_temperatures));
+    T min_energy_val = min_energy[0];
     SAFE_CALL(cudaFree(min_energy));
 
-    return result;
+    return min_energy_val;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

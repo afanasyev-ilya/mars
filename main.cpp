@@ -52,17 +52,11 @@ int main(int argc, char **argv)
             print(h);
         }
 
-        auto parallel_s = parallel_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step);
-        std::cout << "parallel result: ";
-        print(parallel_s);
-        base_type parallel_energy = dot_product(vxm(parallel_s, J), parallel_s) + dot_product(h, parallel_s);
-        std::cout << "parallel energy: " << parallel_energy << std::endl;
+        auto parallel_energy = parallel_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step);
 
         if(parser.check())
         {
-            auto sequential_s = sequential_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step);
-            base_type sequential_energy = dot_product(vxm(sequential_s, J), sequential_s) + dot_product(h, sequential_s);
-            std::cout << "sequential energy: " << sequential_energy << std::endl;
+            auto sequential_energy = sequential_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step);
 
             if(parallel_energy == sequential_energy)
             {
@@ -71,17 +65,6 @@ int main(int argc, char **argv)
             else
             {
                 std::cout << "energies are NOT correct!" << std::endl;
-            }
-
-            if(parallel_s == sequential_s)
-            {
-                std::cout << "vectors are the same!" << std::endl;
-            }
-            else
-            {
-                std::cout << "vectors are NOT the same!" << std::endl;
-                print(parallel_s);
-                print(sequential_s);
             }
         }
     }
