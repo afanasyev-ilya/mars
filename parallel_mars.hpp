@@ -14,7 +14,8 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
                T _c_step,
                T _d_min,
                T _alpha,
-               T _t_step)
+               T _t_step,
+               double &_time)
 {
     std::cout << "CUDA implementation of mars is not activated during compilation, please set __USE_CUDA__ flag in settings" << std::endl;
     throw "Aborting...";
@@ -32,10 +33,11 @@ auto parallel_mars(SquareMatrix<T> &_J_mat,
                    T _c_step,
                    T _d_min,
                    T _alpha,
-                   T _t_step)
+                   T _t_step,
+                   double &_time)
 {
     #ifdef __USE_CUDA__
-    return cuda_mars(_J_mat, _h, _n, _t_min, _t_max, _c_step, _d_min, _alpha, _t_step);
+    return cuda_mars(_J_mat, _h, _n, _t_min, _t_max, _c_step, _d_min, _alpha, _t_step, _time);
     #else
     return 0;
     #endif

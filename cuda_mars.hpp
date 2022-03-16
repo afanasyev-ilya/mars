@@ -333,7 +333,8 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
                T _c_step,
                T _d_min,
                T _alpha,
-               T _t_step)
+               T _t_step,
+               double &_time)
 {
     double free_mem = 0.5/*not to waste all*/*free_memory_size();
     size_t max_blocks_mem_fit = (free_mem*1024*1024*1024 - _n*_n*sizeof(T))/ (_n *sizeof(T));
@@ -378,6 +379,7 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
     double t2 = omp_get_wtime();
     std::cout << "CUDA calculations finished in " << (t2 - t1) << " seconds" << std::endl;
     std::cout << "CUDA min energy: " << min_energy[0] << std::endl;
+    _time = t2 - t1;
 
     std::vector<T> result(_n);
 

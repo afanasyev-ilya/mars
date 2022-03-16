@@ -44,15 +44,14 @@ auto sequential_mars(SquareMatrix<T> &_J_mat,
                      T _c_step,
                      T _d_min,
                      T _alpha,
-                     T _t_step)
+                     T _t_step,
+                     double &_time)
 {
     std::random_device rd;
     std::mt19937 rng(rd());
     std::uniform_real_distribution<T> uni(-1, 1);
 
     std::vector<T> s(_n, 0);
-    std::vector<T> s_trial(_n, 0);
-    std::vector<T> phi(_n, 0);
     int iters = 0;
 
     T min_energy = std::numeric_limits<T>::max();
@@ -75,21 +74,21 @@ auto sequential_mars(SquareMatrix<T> &_J_mat,
             do
             {
                 d = 0;
-                for(size_t i = 0; i < phi.size(); i++)
+                for(size_t i = 0; i < _n; i++)
                 {
                     T sum = 0;
                     for(size_t j = 0; j < _n; j++)
                     {
                         sum += _J_mat.get(i, j) * s[j];
                     }
-                    phi[i] = sum + _h[i];
+                    T mean_field = sum + _h[i];
 
                     T s_trial_loc = 0;
                     if(current_temperature > 0)
                     {
-                        s_trial_loc = _alpha * (-tanh(phi[i] / current_temperature)) + (1 - _alpha) * s[i];
+                        s_trial_loc = _alpha * (-tanh(mean_field / current_temperature)) + (1 - _alpha) * s[i];
                     }
-                    else if (phi[i] >= 0)
+                    else if (mean_field >= 0)
                         s_trial_loc = -1;
                     else
                         s_trial_loc = 1;
@@ -112,6 +111,8 @@ auto sequential_mars(SquareMatrix<T> &_J_mat,
     double t2 = omp_get_wtime();
     std::cout << "CPU calculations finished in " << (t2 - t1) << " seconds" << std::endl;
     std::cout << "CPU min energy: " << min_energy << std::endl;
+
+    _time = t2 - t1;
 
     return min_energy;
 }

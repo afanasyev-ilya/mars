@@ -52,13 +52,17 @@ int main(int argc, char **argv)
             print(h);
         }
 
-        auto parallel_energy = parallel_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step);
+        double parallel_time = 0;
+        auto parallel_energy = parallel_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step, parallel_time);
 
         if(parser.check())
         {
-            auto sequential_energy = sequential_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step);
+            double seq_time = 0;
+            auto sequential_energy = sequential_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step, seq_time);
+            if(parallel_time > 0)
+                std::cout << "acceleration: " << seq_time / parallel_time << std::endl;
 
-            if(fabs(parallel_energy - sequential_energy) < 0.001) // numeric_limits::epslion does not fit here
+            if(fabs(parallel_energy - sequential_energy) < 0.00001) // numeric_limits::epslion does not fit here
             {
                 std::cout << "energies are correct!" << std::endl;
             }
