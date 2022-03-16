@@ -34,7 +34,7 @@ int main(int argc, char **argv)
         }
         else
         {
-            J.read_from_file(parser.get_mtx_file_name(), parser.get_h_vector_provided());
+            J.read_from_file(parser.get_mtx_file_name());
             J.print();
         }
 
@@ -46,7 +46,7 @@ int main(int argc, char **argv)
         base_type t_step = parser.get_t_step();
 
         std::vector<base_type> h(n, 0);
-        if(parser.get_h_vector_provided())
+        if(check_if_h_vector_provided(parser.get_mtx_file_name(), parser.get_mtx_dim()))
         {
             read_from_file(h, parser.get_mtx_file_name());
             print(h);

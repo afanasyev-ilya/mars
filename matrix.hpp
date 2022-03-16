@@ -100,15 +100,73 @@ void SquareMatrix<T>::read_from_file(const std::string &_file_name)
     file_desc.close();
 }*/
 
-template <typename T>
-void SquareMatrix<T>::read_from_file(const std::string &_file_name, bool _skip_h_vector)
+size_t get_number_of_lines_in_file(const std::string &_file_name)
 {
+    char newLine = '.';
+    size_t numLines = 0;
+    std::string text;
+    std::ifstream openFile(_file_name.c_str());
+
+    std::cout << std::endl;
+
+    if(!openFile)
+    {
+        std::cerr << "Error, file does not exist. " << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    while(getline(openFile, text, '\n'))
+    {
+        for(unsigned int i=0; i< text.length(); i++)
+        {
+            if(text.at(i) == newLine)
+            {
+                numLines++;
+            }
+        }
+    }
+
+    return numLines;
+}
+
+bool check_if_h_vector_provided(const std::string &_file_name, size_t dim_size)
+{
+    size_t lines_number = get_number_of_lines_in_file(_file_name);
+    std::cout << "lines number: " << lines_number << std::endl;
+    size_t expected_lines_number_with_h = (dim_size - 1)*((dim_size - 1) + 1)/2 + dim_size;
+    size_t expected_lines_number_without_h = (dim_size - 1)*((dim_size - 1) + 1)/2;
+    std::cout << "expected_lines_number_WITH_h: " << expected_lines_number_with_h << std::endl;
+    std::cout << "expected_lines_number_WITHOUT_h: " << expected_lines_number_without_h << std::endl;
+
+    bool h_is_provided;
+    if(lines_number == expected_lines_number_with_h)
+    {
+        h_is_provided = true;
+    }
+    else if(lines_number == expected_lines_number_without_h)
+    {
+        h_is_provided = false;
+    }
+    else
+    {
+        std::cout << "input file " << _file_name << " does not have enough lines to construct square symmetric matrix" << std::endl;
+        throw "Aborting...";
+    }
+
+    return h_is_provided;
+}
+
+template <typename T>
+void SquareMatrix<T>::read_from_file(const std::string &_file_name)
+{
+    bool h_is_provided = check_if_h_vector_provided(_file_name, dim_size);
+
     std::ifstream file_desc;
     file_desc.open(_file_name);
 
     if(file_desc.is_open())
     {
-        if(_skip_h_vector)
+        if(h_is_provided) // then skip h vector here, and read it later
         {
             for (size_t i = 0; i < dim_size; i++)
             {

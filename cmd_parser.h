@@ -14,8 +14,6 @@ private:
     double d_min;
     double alpha;
     double t_step;
-
-    bool h_vector_provided;
 public:
     void parse_args(int _argc, char **_argv);
 
@@ -32,7 +30,6 @@ public:
     [[nodiscard]] double get_d_min() {return d_min;};
     [[nodiscard]] double get_alpha() {return alpha;};
     [[nodiscard]] double get_t_step() {return t_step;};
-    [[nodiscard]] bool get_h_vector_provided() {return h_vector_provided;};
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
