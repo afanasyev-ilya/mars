@@ -110,7 +110,7 @@ auto sequential_mars(SquareMatrix<T> &_J_mat,
 
     double t2 = omp_get_wtime();
     std::cout << "CPU calculations finished in " << (t2 - t1) << " seconds" << std::endl;
-    std::cout << "CPU min energy: " << std::setprecision(5) << min_energy << std::endl;
+    std::cout << "CPU min energy: " << std::setprecision(10) << min_energy << std::endl;
 
     _time = t2 - t1;
 
