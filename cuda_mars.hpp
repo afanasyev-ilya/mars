@@ -378,7 +378,7 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
     }
     double t2 = omp_get_wtime();
     std::cout << "CUDA calculations finished in " << (t2 - t1) << " seconds" << std::endl;
-    std::cout << "CUDA min energy: " << min_energy[0] << std::endl;
+    std::cout << "CUDA min energy: " << std::setprecision(5) << min_energy[0] << std::endl;
     _time = t2 - t1;
 
     std::vector<T> result(_n);
