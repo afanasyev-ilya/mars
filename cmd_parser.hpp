@@ -11,7 +11,7 @@ Parser::Parser()
     t_min = 1, t_max = 10;
     c_step = 1; // as in the paper
     d_min = 0.0001; // as in the paper
-    alpha = 0.5;
+    alpha = 0.3;
     t_step = 0.001;
     h_vector_provided = false;
 }

@@ -53,6 +53,7 @@ auto sequential_mars(SquareMatrix<T> &_J_mat,
     std::vector<T> s(_n, 0);
     std::vector<T> s_trial(_n, 0);
     std::vector<T> phi(_n, 0);
+    int iters = 0;
 
     T min_energy = std::numeric_limits<T>::max();
     double num_steps = (_t_max - _t_min)/_t_step;
@@ -73,31 +74,39 @@ auto sequential_mars(SquareMatrix<T> &_J_mat,
             current_temperature -= _c_step;
             do
             {
+                d = 0;
+                std::cout << "diff vector: ";
                 for(size_t i = 0; i < phi.size(); i++)
                 {
                     T sum = 0;
                     for(size_t j = 0; j < _n; j++)
                     {
-                        sum += _J_mat.get(i, j) * s[j];
+                        if(i != j)
+                            sum += _J_mat.get(i, j) * s[j];
                     }
                     phi[i] = sum + _h[i];
 
+                    T s_trial_loc = 0;
                     if(current_temperature > 0)
                     {
-                        s_trial[i] = _alpha * (-tanh(phi[i] / current_temperature)) + (1 - _alpha) * s[i];
+                        //std::cout << "current_temperature = " << current_temperature << std::endl;
+                        s_trial_loc = _alpha * (-tanh(phi[i] / current_temperature)) + (1 - _alpha) * s[i];
                     }
+                    else if (phi[i] >= 0)
+                        s_trial_loc = -1;
                     else
+                        s_trial_loc = 1;
+
+                    if(abs(s_trial_loc - s[i]) > d)
                     {
-                        s_trial[i] = -sign(phi[i]);
+                        d = abs(s_trial_loc - s[i]);
                     }
 
-                    if(abs(s_trial[i] - s[i]) > d)
-                    {
-                        d = abs(s_trial[i] - s[i]);
-                    }
-
-                    s[i] = s_trial[i];
+                    s[i] = s_trial_loc;
                 }
+
+                //std::cout << std::endl;
+                std::cout << "d = " << d << " dmin = " << _d_min << std::endl;
             } while(d >= _d_min);
         }
 
