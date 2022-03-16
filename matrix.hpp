@@ -126,7 +126,7 @@ void SquareMatrix<T>::read_from_file(const std::string &_file_name, bool _skip_h
         {
             for (size_t i = 0; i < dim_size; i++)
             {
-                if(i >= j)
+                if(i > j)
                 {
                     std::string line;
                     if(file_desc.eof())
@@ -144,6 +144,8 @@ void SquareMatrix<T>::read_from_file(const std::string &_file_name, bool _skip_h
                     set(i, j, val);
                     set(j, i, val);
                 }
+                if(i == j)
+                    set(i, j, 0);
             }
         }
     }

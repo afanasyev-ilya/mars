@@ -75,14 +75,12 @@ auto sequential_mars(SquareMatrix<T> &_J_mat,
             do
             {
                 d = 0;
-                std::cout << "diff vector: ";
                 for(size_t i = 0; i < phi.size(); i++)
                 {
                     T sum = 0;
                     for(size_t j = 0; j < _n; j++)
                     {
-                        if(i != j)
-                            sum += _J_mat.get(i, j) * s[j];
+                        sum += _J_mat.get(i, j) * s[j];
                     }
                     phi[i] = sum + _h[i];
 
@@ -104,9 +102,6 @@ auto sequential_mars(SquareMatrix<T> &_J_mat,
 
                     s[i] = s_trial_loc;
                 }
-
-                //std::cout << std::endl;
-                std::cout << "d = " << d << " dmin = " << _d_min << std::endl;
             } while(d >= _d_min);
         }
 
