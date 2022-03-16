@@ -111,8 +111,7 @@ size_t get_number_of_lines_in_file(const std::string &_file_name)
 
     if(!openFile)
     {
-        std::cerr << "Error, file does not exist. " << std::endl;
-        exit(EXIT_FAILURE);
+        return 0;
     }
 
     while(getline(openFile, text, '\n'))
@@ -132,6 +131,9 @@ size_t get_number_of_lines_in_file(const std::string &_file_name)
 bool check_if_h_vector_provided(const std::string &_file_name, size_t dim_size)
 {
     size_t lines_number = get_number_of_lines_in_file(_file_name);
+    if(lines_number == 0)
+        return false;
+
     std::cout << "lines number: " << lines_number << std::endl;
     size_t expected_lines_number_with_h = (dim_size - 1)*((dim_size - 1) + 1)/2 + dim_size;
     size_t expected_lines_number_without_h = (dim_size - 1)*((dim_size - 1) + 1)/2;
