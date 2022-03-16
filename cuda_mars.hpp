@@ -237,7 +237,7 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
                 }
             }
             __syncthreads();
-        } while(d[0] < _d_min);
+        } while(d[0] >= _d_min);
     }
 }
 

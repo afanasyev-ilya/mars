@@ -2,8 +2,8 @@ COMPILER=$(CXX)
 
 ifeq ($(COMPILER),g++)
 	Include_Path = -I ../
-	Flags = -D __USE_OMP__ $(MPI_Flags) -O3 -fopenmp -ftree-vectorize -std=c++17 -mtune=a64fx -fopenmp -msve-vector-bits=512 -march=armv8.2-a+sve -Ofast -funroll-loops -ffast-math
-	Libraries = -O3 -fopenmp
+	Flags = -O2 -fopenmp -ftree-vectorize -std=c++11
+	Libraries = -O2 -fopenmp
 	ArchSuffix=_mc
 endif
 

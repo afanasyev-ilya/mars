@@ -98,7 +98,7 @@ auto sequential_mars(SquareMatrix<T> &_J_mat,
 
                     s[i] = s_trial[i];
                 }
-            } while(d < _d_min);
+            } while(d >= _d_min);
         }
 
         T energy = dot_product(vxm(s, _J_mat), s) + dot_product(_h, s);
