@@ -87,7 +87,6 @@ auto sequential_mars(SquareMatrix<T> &_J_mat,
                     T s_trial_loc = 0;
                     if(current_temperature > 0)
                     {
-                        //std::cout << "current_temperature = " << current_temperature << std::endl;
                         s_trial_loc = _alpha * (-tanh(phi[i] / current_temperature)) + (1 - _alpha) * s[i];
                     }
                     else if (phi[i] >= 0)

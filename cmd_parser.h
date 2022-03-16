@@ -20,16 +20,16 @@ public:
     Parser();
 
     bool use_rand_mtx();
-    [[nodiscard]] size_t get_mtx_dim() const {return mtx_dim;};
-    [[nodiscard]] bool check() const {return do_check;};
-    [[nodiscard]] std::string get_mtx_file_name() const {return mtx_file_name; };
+    size_t get_mtx_dim() const {return mtx_dim;};
+    bool check() const {return do_check;};
+    std::string get_mtx_file_name() const {return mtx_file_name; };
 
-    [[nodiscard]] double get_t_min() {return t_min;};
-    [[nodiscard]] double get_t_max() {return t_max;};
-    [[nodiscard]] double get_c_step() {return c_step;};
-    [[nodiscard]] double get_d_min() {return d_min;};
-    [[nodiscard]] double get_alpha() {return alpha;};
-    [[nodiscard]] double get_t_step() {return t_step;};
+    double get_t_min() {return t_min;};
+    double get_t_max() {return t_max;};
+    double get_c_step() {return c_step;};
+    double get_d_min() {return d_min;};
+    double get_alpha() {return alpha;};
+    double get_t_step() {return t_step;};
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -199,12 +199,6 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
 
             for(size_t i = 0; i < _size; i++)
             {
-                /*T sum = 0;
-                for(size_t j = 0; j < _size; j++)
-                {
-                    sum += _mat[i*_size + j] * _spins[j + block_id * _size];
-                }*/
-
                 T val = 0;
                 size_t offset = tid;
                 while(offset < _size)
