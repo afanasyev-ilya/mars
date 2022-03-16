@@ -16,12 +16,14 @@ void SquareMatrix<T>::fill_with_rands(size_t &_dim_size)
     {
         for(size_t i = 0; i < dim_size; i++)
         {
-            if(i >= j) // to ensure it is symmetric
+            if(i > j) // to ensure it is symmetric
             {
                 T val = uni(rng);
                 set(i, j, val);
                 set(j, i, val);
             }
+            if(i == j)
+                set(j, i, 0);
         }
     }
 }
