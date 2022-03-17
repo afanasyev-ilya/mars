@@ -437,7 +437,7 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
     int num_steps = round_up((_t_max - _t_min) / _t_step, VWARP_NUM);
     std::cout << "number of temperatures steps: " << num_steps << std::endl;
     std::cout << "matrix size: " << _n << std::endl;
-    int block_size = 1024;
+    int block_size = BLOCK_SIZE;
     int num_blocks = min(num_steps, max_blocks_mem_fit)/VWARP_NUM;
     std::cout << "estimated block size: " << block_size << std::endl;
     std::cout << "estimated number of blocks: " << num_blocks << std::endl;
