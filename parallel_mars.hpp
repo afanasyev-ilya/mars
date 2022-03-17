@@ -6,7 +6,7 @@
 #include "cuda_mars.hpp"
 #else
 template <typename T>
-auto cuda_mars_warp_per_mean_field(SquareMatrix<T> &_J_mat,
+auto cuda_mars(SquareMatrix<T> &_J_mat,
                std::vector<T> &_h,
                int _n,
                int _t_min,
