@@ -164,7 +164,7 @@ __forceinline__ __device__ _T block_reduce_shmem(_T val, int tid)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-__global__ void mars_mc_parallel_kernel(T* _mat,
+__global__ void mars_mc_block_per_i_kernel(T* _mat,
                                         T* _spins,
                                         T *_h,
                                         int _size,
@@ -232,6 +232,84 @@ __global__ void mars_mc_parallel_kernel(T* _mat,
             }
             __syncthreads();
         } while(d[0] >= _d_min);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+__global__ void mars_mc_warp_per_i_kernel(T* _mat,
+                                          T* _spins,
+                                          T *_h,
+                                          int _size,
+                                          T _c_step,
+                                          T _d_min,
+                                          T _alpha,
+                                          T *_tempratures)
+{
+    int block_id = blockIdx.x;
+    int tid = threadIdx.x;
+    int warp_id = tid / 32;
+    int lane_id = tid % 32;
+
+    int par_shift = block_id*32 + warp_id;
+
+    __shared__ T current_temperature[32];
+    __shared__ T d[32];
+    current_temperature[warp_id] = _tempratures[par_shift];
+
+    __syncwarp();
+
+    while(current_temperature[warp_id] > 0)
+    {
+        __syncwarp();
+        if(lane_id == 0)
+        {
+            current_temperature[warp_id] -= _c_step;
+        }
+
+        do
+        {
+            __syncwarp();
+            if(lane_id == 0)
+                d[warp_id] = 0;
+            __syncwarp();
+
+            for(size_t i = 0; i < _size; i++)
+            {
+                T val = 0;
+                size_t offset = lane_id;
+                while(offset < _size)
+                {
+                    val += _mat[i*_size + offset] * _spins[offset + par_shift * _size];
+                    offset += 32;
+                }
+                T sum = warp_reduce_sum(val);
+
+                T mean_field = sum + _h[i];
+
+                if(lane_id == 0)
+                {
+                    T s_trial = 0;
+
+                    if(current_temperature[warp_id] > 0)
+                    {
+                        s_trial = _alpha * (-tanh(mean_field / current_temperature[warp_id])) + (1 - _alpha) * _spins[i + par_shift * _size];
+                    }
+                    else if (mean_field > 0)
+                        s_trial = -1;
+                    else
+                        s_trial = 1;
+
+                    if(fabs(s_trial - _spins[i + par_shift * _size]) > d[warp_id])
+                    {
+                        d[warp_id] = fabs(s_trial - _spins[i + par_shift * _size]);
+                    }
+                    _spins[i + par_shift * _size] = s_trial;
+                }
+            }
+            __syncwarp();
+        } while(d[warp_id] >= _d_min);
     }
 }
 
@@ -324,6 +402,20 @@ __global__ void estimate_min_energy_kernel(T* _mat,
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+int round_up(int numToRound, int multiple)
+{
+    if (multiple == 0)
+        return numToRound;
+
+    int remainder = numToRound % multiple;
+    if (remainder == 0)
+        return numToRound;
+
+    return numToRound + multiple - remainder;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 template <typename T>
 auto cuda_mars(SquareMatrix<T> &_J_mat,
                std::vector<T> &_h,
@@ -340,20 +432,21 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
     size_t max_blocks_mem_fit = (free_mem*1024*1024*1024 - _n*_n*sizeof(T))/ (_n *sizeof(T));
     std::cout << "we can simultaneously store " << max_blocks_mem_fit << " spins in " << free_mem << " GB of available memory" << std::endl;
 
-    size_t num_steps = (_t_max - _t_min) / _t_step;
+    size_t num_steps = round_up((_t_max - _t_min) / _t_step, 32);
     std::cout << "number of temperatures steps: " << num_steps << std::endl;
     std::cout << "matrix size: " << _n << std::endl;
-    int block_size = min((size_t)BLOCK_SIZE, (size_t)pow(2, ceil(log(_n)/log(2))));
-    int num_blocks = min(num_steps, max_blocks_mem_fit);
+    int block_size = 1024;
+    int num_blocks = min(num_steps, max_blocks_mem_fit)/32;
     std::cout << "estimated block size: " << block_size << std::endl;
     std::cout << "estimated number of blocks: " << num_blocks << std::endl;
+    std::cout << "we will do  " << num_blocks * 32 << " MC steps in parallel" << std::endl;
 
     std::cout << "Using CUDA mars (parallelism for different MC steps)" << std::endl;
     T *dev_s, *dev_h, *dev_temperatures;
     T *min_energy;
-    SAFE_CALL(cudaMallocManaged((void**)&dev_s, _n*num_blocks*sizeof(T)));
+    SAFE_CALL(cudaMallocManaged((void**)&dev_s, 32*_n*num_blocks*sizeof(T)));
     SAFE_CALL(cudaMallocManaged((void**)&dev_h, _n*sizeof(T)));
-    SAFE_CALL(cudaMallocManaged((void**)&dev_temperatures, num_blocks*sizeof(T)));
+    SAFE_CALL(cudaMallocManaged((void**)&dev_temperatures, 32*num_blocks*sizeof(T)));
     SAFE_CALL(cudaMallocManaged((void**)&min_energy, sizeof(T)));
     min_energy[0] = std::numeric_limits<T>::max();
 
@@ -362,18 +455,22 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
     SAFE_CALL(cudaMemcpy(dev_mat, _J_mat.get_ptr(), _n*_n*sizeof(T), cudaMemcpyHostToDevice));
     SAFE_CALL(cudaMemcpy(dev_h, &(_h[0]), _n*sizeof(T), cudaMemcpyHostToDevice));
 
+    std::cout << "using warp per i policy" << std::endl;
     double t1 = omp_get_wtime();
-    for(base_type temperature = _t_min; temperature < _t_max; temperature += (_t_step * num_blocks))
+    for(base_type temperature = _t_min; temperature < _t_max; temperature += (_t_step * num_blocks * 32))
     {
-        gpu_fill_rand(dev_s, _n*num_blocks);
+        gpu_fill_rand(dev_s, _n*num_blocks*32);
 
-        for(int i = 0; i < num_blocks; i++)
+        for(int i = 0; i < num_blocks*32; i++)
             dev_temperatures[i] = temperature + _t_step*i;
 
-        SAFE_KERNEL_CALL((mars_mc_parallel_kernel<<<num_blocks , block_size>>>(dev_mat,
+        /*SAFE_KERNEL_CALL((mars_mc_block_per_i_kernel<<<num_blocks , block_size>>>(dev_mat,
+                                 dev_s, dev_h, _n, _c_step, _d_min, _alpha, dev_temperatures)));*/
+
+        SAFE_KERNEL_CALL((mars_mc_warp_per_i_kernel<<<num_blocks , block_size>>>(dev_mat,
                                  dev_s, dev_h, _n, _c_step, _d_min, _alpha, dev_temperatures)));
 
-        SAFE_KERNEL_CALL((estimate_min_energy_kernel<<<num_blocks , block_size>>>(dev_mat,
+        SAFE_KERNEL_CALL((estimate_min_energy_kernel<<<32*num_blocks, 32>>>(dev_mat,
                                     dev_s, dev_h, _n, num_steps, min_energy)));
     }
     double t2 = omp_get_wtime();
