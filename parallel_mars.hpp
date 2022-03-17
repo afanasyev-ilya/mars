@@ -6,7 +6,7 @@
 #include "cuda_mars.hpp"
 #else
 template <typename T>
-auto cuda_mars(SquareMatrix<T> &_J_mat,
+auto cuda_mars_warp_per_mean_field(SquareMatrix<T> &_J_mat,
                std::vector<T> &_h,
                int _n,
                int _t_min,
@@ -37,7 +37,7 @@ auto parallel_mars(SquareMatrix<T> &_J_mat,
                    double &_time)
 {
     #ifdef __USE_CUDA__
-    return cuda_mars(_J_mat, _h, _n, _t_min, _t_max, _c_step, _d_min, _alpha, _t_step, _time);
+    return cuda_mars_warp_per_mean_field(_J_mat, _h, _n, _t_min, _t_max, _c_step, _d_min, _alpha, _t_step, _time);
     #else
     return sequential_mars(_J_mat, _h, _n, _t_min, _t_max, _c_step, _d_min, _alpha, _t_step, _time);
     #endif

@@ -241,14 +241,14 @@ __global__ void mars_mc_block_per_i_kernel(T* _mat,
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-__global__ void mars_mc_warp_per_i_kernel(const T* __restrict__ _mat,
-                                          T* _spins,
-                                          const T * __restrict__ _h,
-                                          int _size,
-                                          T _c_step,
-                                          T _d_min,
-                                          T _alpha,
-                                          const T * __restrict__ _tempratures)
+__global__ void mars_mc_warp_per_mean_field_kernel(const T* __restrict__ _mat,
+                                                   T *_spins,
+                                                   const T *__restrict__ _h,
+                                                   int _size,
+                                                   T _c_step,
+                                                   T _d_min,
+                                                   T _alpha,
+                                                   const T *__restrict__ _tempratures)
 {
     int block_id = blockIdx.x;
     int tid = threadIdx.x;
@@ -419,16 +419,16 @@ int round_up(int numToRound, int multiple)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-auto cuda_mars(SquareMatrix<T> &_J_mat,
-               std::vector<T> &_h,
-               int _n,
-               int _t_min,
-               int _t_max,
-               T _c_step,
-               T _d_min,
-               T _alpha,
-               T _t_step,
-               double &_time)
+auto cuda_mars_warp_per_mean_field(SquareMatrix <T> &_J_mat,
+                                   std::vector<T> &_h,
+                                   int _n,
+                                   int _t_min,
+                                   int _t_max,
+                                   T _c_step,
+                                   T _d_min,
+                                   T _alpha,
+                                   T _t_step,
+                                   double &_time)
 {
     double free_mem = 0.5/*not to waste all*/*free_memory_size();
     int max_blocks_mem_fit = (free_mem*1024*1024*1024 - _n*_n*sizeof(T))/ (_n *sizeof(T));
@@ -466,10 +466,7 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
         for(int i = 0; i < num_blocks*VWARP_NUM; i++)
             dev_temperatures[i] = temperature + _t_step*i;
 
-        /*SAFE_KERNEL_CALL((mars_mc_block_per_i_kernel<<<num_blocks , block_size>>>(dev_mat,
-                                 dev_s, dev_h, _n, _c_step, _d_min, _alpha, dev_temperatures)));*/
-
-        SAFE_KERNEL_CALL((mars_mc_warp_per_i_kernel<<<num_blocks , block_size>>>(dev_mat,
+        SAFE_KERNEL_CALL((mars_mc_warp_per_mean_field_kernel<<<num_blocks , block_size>>>(dev_mat,
                                  dev_s, dev_h, _n, _c_step, _d_min, _alpha, dev_temperatures)));
 
         SAFE_KERNEL_CALL((estimate_min_energy_kernel<<<VWARP_NUM*num_blocks, 32>>>(dev_mat,
