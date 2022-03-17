@@ -3,7 +3,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-void SquareMatrix<T>::fill_with_rands(size_t &_dim_size)
+void SquareMatrix<T>::fill_with_rands(int &_dim_size)
 {
     dim_size = _dim_size;
     data.resize(dim_size*dim_size);
@@ -12,9 +12,9 @@ void SquareMatrix<T>::fill_with_rands(size_t &_dim_size)
     std::mt19937 rng(rd());
     std::uniform_real_distribution<T> uni(-1, 1);
 
-    for(size_t j = 0; j < dim_size; j++)
+    for(int j = 0; j < dim_size; j++)
     {
-        for(size_t i = 0; i < dim_size; i++)
+        for(int i = 0; i < dim_size; i++)
         {
             if(i > j) // to ensure it is symmetric
             {
@@ -35,9 +35,9 @@ void SquareMatrix<T>::print()
 {
     if(dim_size*dim_size < MAX_PRINTING_SIZE)
     {
-        for(size_t j = 0; j < dim_size; j++)
+        for(int j = 0; j < dim_size; j++)
         {
-            for (size_t i = 0; i < dim_size; i++)
+            for (int i = 0; i < dim_size; i++)
             {
                 std::cout << get(i, j) << std::setprecision(4) << " ";
             }
@@ -74,16 +74,16 @@ void SquareMatrix<T>::read_from_file(const std::string &_file_name)
             }
         }
 
-        size_t num_elems = tmp_vals.size();
+        int num_elems = tmp_vals.size();
 
         dim_size = (sqrt(8*num_elems + 1) - 1)/2; // assuming we have just read N*(N+1)/2 elements, and try to find N
         std::cout << "dim size: " << dim_size << std::endl;
         std::cout << "elements read: " << num_elems << std::endl;
-        size_t cnt = 0;
+        int cnt = 0;
         data.resize(dim_size*dim_size);
-        for(size_t j = 0; j < dim_size; j++)
+        for(int j = 0; j < dim_size; j++)
         {
-            for (size_t i = 0; i < dim_size; i++)
+            for (int i = 0; i < dim_size; i++)
             {
                 if(i >= j)
                 {
@@ -102,10 +102,10 @@ void SquareMatrix<T>::read_from_file(const std::string &_file_name)
     file_desc.close();
 }*/
 
-size_t get_number_of_lines_in_file(const std::string &_file_name)
+int get_number_of_lines_in_file(const std::string &_file_name)
 {
     char newLine = '.';
-    size_t numLines = 0;
+    int numLines = 0;
     std::string text;
     std::ifstream openFile(_file_name.c_str());
 
@@ -130,15 +130,15 @@ size_t get_number_of_lines_in_file(const std::string &_file_name)
     return numLines;
 }
 
-bool check_if_h_vector_provided(const std::string &_file_name, size_t dim_size)
+bool check_if_h_vector_provided(const std::string &_file_name, int dim_size)
 {
-    size_t lines_number = get_number_of_lines_in_file(_file_name);
+    int lines_number = get_number_of_lines_in_file(_file_name);
     if(lines_number == 0)
         return false;
 
     std::cout << "lines number: " << lines_number << std::endl;
-    size_t expected_lines_number_with_h = (dim_size - 1)*((dim_size - 1) + 1)/2 + dim_size;
-    size_t expected_lines_number_without_h = (dim_size - 1)*((dim_size - 1) + 1)/2;
+    int expected_lines_number_with_h = (dim_size - 1)*((dim_size - 1) + 1)/2 + dim_size;
+    int expected_lines_number_without_h = (dim_size - 1)*((dim_size - 1) + 1)/2;
     std::cout << "expected_lines_number_WITH_h: " << expected_lines_number_with_h << std::endl;
     std::cout << "expected_lines_number_WITHOUT_h: " << expected_lines_number_without_h << std::endl;
 
@@ -172,7 +172,7 @@ void SquareMatrix<T>::read_from_file(const std::string &_file_name)
     {
         if(h_is_provided) // then skip h vector here, and read it later
         {
-            for (size_t i = 0; i < dim_size; i++)
+            for (int i = 0; i < dim_size; i++)
             {
                 std::string line;
                 if(file_desc.eof())
@@ -184,9 +184,9 @@ void SquareMatrix<T>::read_from_file(const std::string &_file_name)
             }
         }
 
-        for(size_t j = 0; j < dim_size; j++)
+        for(int j = 0; j < dim_size; j++)
         {
-            for (size_t i = 0; i < dim_size; i++)
+            for (int i = 0; i < dim_size; i++)
             {
                 if(i > j)
                 {

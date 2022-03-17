@@ -40,9 +40,9 @@ double free_memory_size()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-void __global__ randoms_to_range_kernel(T *_data, size_t _size)
+void __global__ randoms_to_range_kernel(T *_data, int _size)
 {
-    const size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    const int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if(idx < _size)
     {
         _data[idx] = (_data[idx] - 0.5)*2; // [0, 1) into [-1, 1)
@@ -52,9 +52,9 @@ void __global__ randoms_to_range_kernel(T *_data, size_t _size)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-void __global__ process_large_matrix_kernel(T *_data, size_t _size)
+void __global__ process_large_matrix_kernel(T *_data, int _size)
 {
-    const size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    const int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if(idx < _size)
     {
         _data[idx] = (_data[idx] - 0.5)*2; // [0, 1) into [-1, 1)
@@ -67,7 +67,7 @@ void __global__ process_large_matrix_kernel(T *_data, size_t _size)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void gpu_fill_rand(double *_data, size_t _size)
+void gpu_fill_rand(double *_data, int _size)
 {
     curandGenerator_t randGen;
     curandCreateGenerator(&randGen, CURAND_RNG_PSEUDO_DEFAULT);
@@ -75,7 +75,7 @@ void gpu_fill_rand(double *_data, size_t _size)
     SAFE_KERNEL_CALL((randoms_to_range_kernel<<<(_size - 1)/BLOCK_SIZE + 1, BLOCK_SIZE>>>(_data, _size)));
 }
 
-void gpu_fill_rand(float *_data, size_t _size)
+void gpu_fill_rand(float *_data, int _size)
 {
     curandGenerator_t randGen;
     curandCreateGenerator(&randGen, CURAND_RNG_PSEUDO_DEFAULT);
@@ -197,10 +197,10 @@ __global__ void mars_mc_block_per_i_kernel(T* _mat,
                 d[0] = 0;
             __syncthreads();
 
-            for(size_t i = 0; i < _size; i++)
+            for(int i = 0; i < _size; i++)
             {
                 T val = 0;
-                size_t offset = tid;
+                int offset = tid;
                 while(offset < _size)
                 {
                     val += _mat[i*_size + offset] * _spins[offset + block_id * _size];
@@ -275,10 +275,10 @@ __global__ void mars_mc_warp_per_i_kernel(const T* __restrict__ _mat,
                 d[warp_id] = 0;
             __syncwarp();
 
-            for(size_t i = 0; i < _size; i++)
+            for(int i = 0; i < _size; i++)
             {
                 T val = 0;
-                size_t offset = lane_id;
+                int offset = lane_id;
                 #pragma unroll(16)
                 for(int offset = lane_id; offset < _size; offset += 32)
                 {
@@ -316,12 +316,12 @@ __global__ void mars_mc_warp_per_i_kernel(const T* __restrict__ _mat,
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-__device__ T dot_product(T *v1, T* v2, size_t _size)
+__device__ T dot_product(T *v1, T* v2, int _size)
 {
     int tid = threadIdx.x;
 
     T val = 0;
-    size_t offset = tid;
+    int offset = tid;
     while(offset < _size)
     {
         val += v1[offset]*v2[offset];
@@ -334,16 +334,16 @@ __device__ T dot_product(T *v1, T* v2, size_t _size)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-__device__ T dot_product_mxv(T* _mat, T* _spin, size_t _size)
+__device__ T dot_product_mxv(T* _mat, T* _spin, int _size)
 {
     int tid = threadIdx.x;
 
     T val = 0;
-    size_t offset = tid;
+    int offset = tid;
     while(offset < _size)
     {
         T vxm_val = 0;
-        for(size_t i = 0; i < _size; i++)
+        for(int i = 0; i < _size; i++)
         {
             vxm_val += _spin[i]*_mat[i*_size + offset];
         }
@@ -387,8 +387,8 @@ template <typename T>
 __global__ void estimate_min_energy_kernel(T* _mat,
                                             T *_spins,
                                             T *_h,
-                                            size_t _size,
-                                            size_t _num_iters,
+                                            int _size,
+                                            int _num_iters,
                                             T *_min_energy)
 {
     int tid = threadIdx.x;
@@ -419,7 +419,7 @@ int round_up(int numToRound, int multiple)
 template <typename T>
 auto cuda_mars(SquareMatrix<T> &_J_mat,
                std::vector<T> &_h,
-               size_t _n,
+               int _n,
                int _t_min,
                int _t_max,
                T _c_step,
@@ -429,10 +429,10 @@ auto cuda_mars(SquareMatrix<T> &_J_mat,
                double &_time)
 {
     double free_mem = 0.5/*not to waste all*/*free_memory_size();
-    size_t max_blocks_mem_fit = (free_mem*1024*1024*1024 - _n*_n*sizeof(T))/ (_n *sizeof(T));
+    int max_blocks_mem_fit = (free_mem*1024*1024*1024 - _n*_n*sizeof(T))/ (_n *sizeof(T));
     std::cout << "we can simultaneously store " << max_blocks_mem_fit << " spins in " << free_mem << " GB of available memory" << std::endl;
 
-    size_t num_steps = round_up((_t_max - _t_min) / _t_step, 32);
+    int num_steps = round_up((_t_max - _t_min) / _t_step, 32);
     std::cout << "number of temperatures steps: " << num_steps << std::endl;
     std::cout << "matrix size: " << _n << std::endl;
     int block_size = 1024;

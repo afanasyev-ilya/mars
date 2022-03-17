@@ -12,7 +12,7 @@ T dot_product(const std::vector<T> &_v1, const std::vector<T> &_v2)
     if(_v1.size() != _v2.size())
         throw "Incorrect dims in dot product";
     T sum = 0;
-    for(size_t i = 0; i < _v1.size(); i++)
+    for(int i = 0; i < _v1.size(); i++)
         sum += _v1[i] * _v2[i];
     return sum;
 }
@@ -23,10 +23,10 @@ template <typename T>
 auto vxm(const std::vector<T> &_vector, const SquareMatrix<T> &_matrix)
 {
     std::vector<T> result(_vector.size(), 0);
-    for(size_t j = 0; j < result.size(); j++)
+    for(int j = 0; j < result.size(); j++)
     {
         T sum = 0;
-        for(size_t i = 0; i < result.size(); i++)
+        for(int i = 0; i < result.size(); i++)
             sum += _vector[i]*_matrix.get(i, j);
         result[j] = sum;
     }
@@ -38,7 +38,7 @@ auto vxm(const std::vector<T> &_vector, const SquareMatrix<T> &_matrix)
 template <typename T>
 auto sequential_mars(SquareMatrix<T> &_J_mat,
                      std::vector<T> &_h,
-                     size_t _n,
+                     int _n,
                      int _t_min,
                      int _t_max,
                      T _c_step,
@@ -74,10 +74,10 @@ auto sequential_mars(SquareMatrix<T> &_J_mat,
             do
             {
                 d = 0;
-                for(size_t i = 0; i < _n; i++)
+                for(int i = 0; i < _n; i++)
                 {
                     T sum = 0;
-                    for(size_t j = 0; j < _n; j++)
+                    for(int j = 0; j < _n; j++)
                     {
                         sum += _J_mat.get(i, j) * s[j];
                     }

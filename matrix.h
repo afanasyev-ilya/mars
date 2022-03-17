@@ -7,29 +7,29 @@ class SquareMatrix
 {
 private:
     std::vector<T> data; // use one-dim vector for optimizations
-    size_t dim_size;
+    int dim_size;
 public:
-    explicit SquareMatrix(size_t _size = 1): data(_size*_size, 0)
+    explicit SquareMatrix(int _size = 1): data(_size*_size, 0)
     {
         dim_size = _size;
     }
 
-    inline T get(size_t i, size_t j) const
+    inline T get(int i, int j) const
     {
         return data[i*dim_size + j];
     }
 
-    inline void set(size_t i, size_t j, T _val)
+    inline void set(int i, int j, T _val)
     {
         data[i*dim_size + j] = _val;
     }
 
-    inline void set(size_t i, T _val)
+    inline void set(int i, T _val)
     {
         data[i] = _val;
     }
 
-    void fill_with_rands(size_t &_dim_size);
+    void fill_with_rands(int &_dim_size);
 
     void print();
 
@@ -37,7 +37,7 @@ public:
 
     T* get_ptr() {return &data[0];};
 
-    inline size_t get_dim_size() const {return dim_size;};
+    inline int get_dim_size() const {return dim_size;};
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

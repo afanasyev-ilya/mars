@@ -55,7 +55,7 @@ void read_from_file(std::vector<T> &_v, const std::string &_file_name)
 
     if (file_desc.is_open())
     {
-        for (size_t i = 0; i < _v.size(); i++)
+        for (int i = 0; i < _v.size(); i++)
         {
             std::string line;
             if (file_desc.eof())

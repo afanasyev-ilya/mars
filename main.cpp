@@ -28,7 +28,7 @@ int main(int argc, char **argv)
         if(parser.use_rand_mtx())
         {
             std::cout << "Generating random matrix of size " << parser.get_mtx_dim() << std::endl;
-            size_t dim_size = parser.get_mtx_dim();
+            int dim_size = parser.get_mtx_dim();
             J.fill_with_rands(dim_size);
             J.print();
         }
@@ -38,7 +38,7 @@ int main(int argc, char **argv)
             J.print();
         }
 
-        const size_t n = J.get_dim_size();
+        const int n = J.get_dim_size();
         base_type t_min = parser.get_t_min(), t_max = parser.get_t_max();
         base_type c_step = parser.get_c_step();
         base_type d_min = parser.get_d_min();
