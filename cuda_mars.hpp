@@ -279,10 +279,10 @@ __global__ void mars_mc_warp_per_i_kernel(const T* __restrict__ _mat,
             {
                 T val = 0;
                 size_t offset = lane_id;
-                while(offset < _size)
+                #pragma unroll(16)
+                for(int offset = lane_id; offset < _size; offset += 32)
                 {
                     val += _mat[i*_size + offset] * _spins[par_shift * _size + offset];
-                    offset += 32;
                 }
                 T sum = warp_reduce_sum(val);
 
