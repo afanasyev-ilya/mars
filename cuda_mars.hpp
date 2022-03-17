@@ -238,14 +238,14 @@ __global__ void mars_mc_block_per_i_kernel(T* _mat,
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-__global__ void mars_mc_warp_per_i_kernel(T* _mat,
+__global__ void mars_mc_warp_per_i_kernel(const T* __restrict__ _mat,
                                           T* _spins,
-                                          T *_h,
+                                          const T * __restrict__ _h,
                                           int _size,
                                           T _c_step,
                                           T _d_min,
                                           T _alpha,
-                                          T *_tempratures)
+                                          const T * __restrict__ _tempratures)
 {
     int block_id = blockIdx.x;
     int tid = threadIdx.x;
@@ -281,7 +281,7 @@ __global__ void mars_mc_warp_per_i_kernel(T* _mat,
                 size_t offset = lane_id;
                 while(offset < _size)
                 {
-                    val += _mat[i*_size + offset] * _spins[offset + par_shift * _size];
+                    val += _mat[i*_size + offset] * _spins[par_shift * _size + offset];
                     offset += 32;
                 }
                 T sum = warp_reduce_sum(val);
