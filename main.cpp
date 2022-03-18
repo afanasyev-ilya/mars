@@ -84,6 +84,7 @@ int main(int argc, char **argv)
             {
                 BatchInfo info = parser.get_batch_info(batch_pos);
                 double parallel_time = 0;
+                info.print();
                 base_type parallel_energy = parallel_mars<base_type>(J, h, n, info.t_min, info.t_max, info.c_step, d_min, info.alpha, t_step, parallel_time);
                 std::cout << "batch " << batch_pos << " energy: " << parallel_energy << std::endl;
             }

@@ -13,7 +13,7 @@ Parser::Parser()
     d_min = 0.0001; // as in the paper
     alpha = 0.5;
     t_step = 0.001;
-    batch_file = "";
+    batch_file_name = "";
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +82,8 @@ void Parser::parse_args(int _argc, char **_argv)
 
         if ((option == "-batch"))
         {
-            batch_file = std::string(_argv[++i]);
+            batch_file_name = std::string(_argv[++i]);
+            parse_batch_file();
         }
 
         if ((option == "-help") || (option == "-h"))
@@ -116,6 +117,24 @@ void Parser::parse_args(int _argc, char **_argv)
     std::cout << "d_min:" << d_min << std::endl;
     std::cout << "alpha:" << alpha << std::endl;
     std::cout << "t_step:" << t_step << std::endl;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Parser::parse_batch_file()
+{
+    std::ifstream file(batch_file_name);
+    std::string line;
+    while (std::getline(file, line))
+    {
+        std::stringstream ss(line);
+        BatchInfo info;
+        ss >> info.t_min;
+        ss >> info.t_max;
+        ss >> info.c_step;
+        ss >> info.alpha;
+        batches_data.push_back(info);
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
