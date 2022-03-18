@@ -136,12 +136,12 @@ __global__ void mars_mc_warp_per_mean_field_kernel(const T* __restrict__ _mat,
                                                    T _alpha,
                                                    const T *__restrict__ _tempratures)
 {
-    int block_id = blockIdx.x;
-    int tid = threadIdx.x;
-    int warp_id = tid / VWARP_SIZE;
-    int lane_id = tid % VWARP_SIZE;
+    const int block_id = blockIdx.x;
+    const int tid = threadIdx.x;
+    const int warp_id = tid / VWARP_SIZE;
+    const int lane_id = tid % VWARP_SIZE;
 
-    int par_shift = block_id*VWARP_NUM + warp_id;
+    const int par_shift = block_id*VWARP_NUM + warp_id;
 
     __shared__ T current_temperature[VWARP_NUM];
     __shared__ T d[VWARP_NUM];
@@ -166,18 +166,19 @@ __global__ void mars_mc_warp_per_mean_field_kernel(const T* __restrict__ _mat,
 
             for(int i = 0; i < _size; i++)
             {
-                T val = 0;
+                register T val = 0;
                 #pragma unroll(16)
                 for(int offset = lane_id; offset < _size; offset += VWARP_SIZE)
                 {
                     val += _mat[i*_size + offset] * _spins[par_shift * _size + offset];
                 }
-                T sum = virt_warp_reduce_sum(val);
-                T mean_field = sum + _h[i];
+                register T sum = virt_warp_reduce_sum(val);
 
                 if(lane_id == 0)
                 {
-                    T s_trial = 0;
+                    register T mean_field = sum + _h[i];
+
+                    register T s_trial = 0;
 
                     if(current_temperature[warp_id] > 0)
                     {
@@ -334,14 +335,6 @@ auto cuda_mars_warp_per_mean_field(SquareMatrix <T> &_J_mat,
 
         SAFE_KERNEL_CALL((estimate_min_energy_kernel<<<VWARP_NUM*num_blocks, 32>>>(dev_mat,
                                     dev_s, dev_h, _n, num_steps, min_energy)));
-
-        /*for(int shift = 0; shift < 10; shift++)
-        {
-            std::vector<T> s(_n);
-            cudaMemcpy(&s[0], dev_s + _n * shift, _n *sizeof(T), cudaMemcpyDeviceToHost);
-            T energy = dot_product(vxm(s, _J_mat), s) + dot_product(_h, s);
-            std::cout << "energy : " << energy << " = " << dot_product(_h, s)  << " + " << dot_product(vxm(s, _J_mat), s) << std::endl;
-        }*/
     }
     double t2 = omp_get_wtime();
     std::cout << "CUDA calculations finished in " << (t2 - t1) << " seconds" << std::endl;
