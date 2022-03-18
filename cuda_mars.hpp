@@ -320,7 +320,7 @@ auto cuda_mars_warp_per_mean_field(SquareMatrix <T> &_J_mat,
     SAFE_CALL(cudaMallocManaged((void**)&dev_mat, _n*_n*sizeof(T)));
     SAFE_CALL(cudaMemcpy(dev_mat, _J_mat.get_ptr(), _n*_n*sizeof(T), cudaMemcpyHostToDevice));
     SAFE_CALL(cudaMemcpy(dev_h, &(_h[0]), _n*sizeof(T), cudaMemcpyHostToDevice));
-    
+
     double t1 = omp_get_wtime();
     for(base_type temperature = _t_min; temperature < _t_max; temperature += (_t_step * num_blocks * VWARP_NUM))
     {
