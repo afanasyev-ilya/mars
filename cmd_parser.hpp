@@ -13,6 +13,7 @@ Parser::Parser()
     d_min = 0.0001; // as in the paper
     alpha = 0.5;
     t_step = 0.001;
+    batch_file = "";
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -79,6 +80,11 @@ void Parser::parse_args(int _argc, char **_argv)
             t_step = to_float(std::string(_argv[++i]));
         }
 
+        if ((option == "-batch"))
+        {
+            batch_file = std::string(_argv[++i]);
+        }
+
         if ((option == "-help") || (option == "-h"))
         {
             std::cout << "-dim [N], specifies the size of input matrix (required argument)" << std::endl;
@@ -91,6 +97,7 @@ void Parser::parse_args(int _argc, char **_argv)
             std::cout << "-d_min [N], specifies d_min (optional, default is 0.0001)" << std::endl;
             std::cout << "-alpha [N], specifies alpha (optional, default is 0.5)" << std::endl;
             std::cout << "-t_step [N], specifies step between t_min and t_max (optional, default is 0.1)" << std::endl;
+            std::cout << "-batch [file_name], specifies the name of file, which contains information about multiple runs with different parameters {tmin, tmax, cstep, alpha}" << std::endl;
             std::cout << "-help, prints this message" << std::endl;
 
             throw "Help is requested, aborting...";

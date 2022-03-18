@@ -38,13 +38,12 @@ int main(int argc, char **argv)
             J.print();
         }
 
+        // common params
         const int n = J.get_dim_size();
-        base_type t_min = parser.get_t_min(), t_max = parser.get_t_max();
-        base_type c_step = parser.get_c_step();
-        base_type d_min = parser.get_d_min();
-        base_type alpha = parser.get_alpha();
         base_type t_step = parser.get_t_step();
+        base_type d_min = parser.get_d_min();
 
+        // read h-vector
         std::vector<base_type> h(n, 0);
         if(check_if_h_vector_provided(parser.get_mtx_file_name(), parser.get_mtx_dim()))
         {
@@ -52,23 +51,41 @@ int main(int argc, char **argv)
             print(h);
         }
 
-        double parallel_time = 0;
-        double parallel_energy = parallel_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step, parallel_time);
-
-        if(parser.check())
+        // run main computations
+        if(!parser.batch_file_provided())
         {
-            double seq_time = 0;
-            double sequential_energy = sequential_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step, seq_time);
-            if(parallel_time > 0)
-                std::cout << "acceleration: " << seq_time / parallel_time << std::endl;
+            base_type t_min = parser.get_t_min(), t_max = parser.get_t_max();
+            base_type c_step = parser.get_c_step();
+            base_type alpha = parser.get_alpha();
 
-            if(fabs(parallel_energy - sequential_energy) < 0.00001) // numeric_limits::epslion does not fit here
+            double parallel_time = 0;
+            base_type parallel_energy = parallel_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step, parallel_time);
+
+            if(parser.check())
             {
-                std::cout << "energies are correct!" << std::endl;
+                double seq_time = 0;
+                base_type sequential_energy = sequential_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step, seq_time);
+                if(parallel_time > 0)
+                    std::cout << "acceleration: " << seq_time / parallel_time << std::endl;
+
+                if(fabs(parallel_energy - sequential_energy) < 0.00001) // numeric_limits::epslion does not fit here
+                {
+                    std::cout << "energies are correct!" << std::endl;
+                }
+                else
+                {
+                    std::cout << "energies are NOT correct!" << std::endl;
+                }
             }
-            else
+        }
+        else
+        {
+            for(int batch_pos = 0; batch_pos < parser.get_num_batches(); batch_pos++)
             {
-                std::cout << "energies are NOT correct!" << std::endl;
+                BatchInfo info = parser.get_batch_info(batch_pos);
+                double parallel_time = 0;
+                base_type parallel_energy = parallel_mars<base_type>(J, h, n, info.t_min, info.t_max, info.c_step, d_min, info.alpha, t_step, parallel_time);
+                std::cout << "batch " << batch_pos << " energy: " << parallel_energy << std::endl;
             }
         }
     }
