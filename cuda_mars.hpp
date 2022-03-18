@@ -284,16 +284,16 @@ int round_up(int numToRound, int multiple)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-auto cuda_mars_warp_per_mean_field(SquareMatrix <T> &_J_mat,
-                                   std::vector<T> &_h,
-                                   int _n,
-                                   int _t_min,
-                                   int _t_max,
-                                   T _c_step,
-                                   T _d_min,
-                                   T _alpha,
-                                   T _t_step,
-                                   double &_time)
+T cuda_mars_warp_per_mean_field(SquareMatrix <T> &_J_mat,
+                                std::vector<T> &_h,
+                                int _n,
+                                int _t_min,
+                                int _t_max,
+                                T _c_step,
+                                T _d_min,
+                                T _alpha,
+                                T _t_step,
+                                double &_time)
 {
     double free_mem = 0.5/*not to waste all*/*free_memory_size();
     int max_blocks_mem_fit = (free_mem*1024*1024*1024 - _n*_n*sizeof(T))/ (_n *sizeof(T));

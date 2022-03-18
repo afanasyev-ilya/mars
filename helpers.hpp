@@ -35,8 +35,8 @@ void print(std::vector<T> &_data)
 {
     if(_data.size() < MAX_PRINTING_SIZE)
     {
-        for(auto &i: _data)
-            std::cout << i << ' ';
+        for(int i = 0; i < _data.size(); i++)
+            std::cout << _data[i] << ' ';
         std::cout << std::endl;
     }
     else

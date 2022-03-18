@@ -53,12 +53,12 @@ int main(int argc, char **argv)
         }
 
         double parallel_time = 0;
-        auto parallel_energy = parallel_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step, parallel_time);
+        double parallel_energy = parallel_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step, parallel_time);
 
         if(parser.check())
         {
             double seq_time = 0;
-            auto sequential_energy = sequential_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step, seq_time);
+            double sequential_energy = sequential_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step, seq_time);
             if(parallel_time > 0)
                 std::cout << "acceleration: " << seq_time / parallel_time << std::endl;
 
