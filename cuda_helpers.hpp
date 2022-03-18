@@ -76,6 +76,16 @@ double free_memory_size()
 template <typename _T>
 __device__ __forceinline__ _T warp_reduce_sum(_T val)
 {
+    for (int offset = 32/2; offset > 0; offset /= 2)
+        val += __shfl_down_sync(0xffffffff, val, offset);
+    return val;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename _T>
+__device__ __forceinline__ _T virt_warp_reduce_sum(_T val)
+{
     for (int offset = VWARP_SIZE/2; offset > 0; offset /= 2)
         val += __shfl_down_sync(0xffffffff, val, offset);
     return val;

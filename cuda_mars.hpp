@@ -172,7 +172,7 @@ __global__ void mars_mc_warp_per_mean_field_kernel(const T* __restrict__ _mat,
                 {
                     val += _mat[i*_size + offset] * _spins[par_shift * _size + offset];
                 }
-                T sum = warp_reduce_sum(val);
+                T sum = virt_warp_reduce_sum(val);
                 T mean_field = sum + _h[i];
 
                 if(lane_id == 0)
@@ -213,9 +213,9 @@ __device__ T dot_product(T *v1, T* v2, int _size)
     while(offset < _size)
     {
         val += v1[offset]*v2[offset];
-        offset += blockDim.x;
+        offset += 32;
     }
-    T dot = block_reduce_sum(val);
+    T dot = virt_warp_reduce_sum(val);
     return dot;
 }
 
@@ -236,30 +236,34 @@ __device__ T dot_product_mxv(T* _mat, T* _spin, int _size)
             vxm_val += _spin[i]*_mat[i*_size + offset];
         }
         val += _spin[offset] * vxm_val;
-        offset += blockDim.x;
+        offset += 32;
     }
 
-    T dot = block_reduce_sum(val);
+    T dot = warp_reduce_sum(val);
     return dot;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-__global__ void estimate_min_energy_kernel(T* _mat,
-                                            T *_spins,
-                                            T *_h,
-                                            int _size,
-                                            int _num_iters,
-                                            T *_min_energy)
+__global__ void estimate_min_energy_kernel(T *_mat,
+                                           T *_spins,
+                                           T *_h,
+                                           int _size,
+                                           int _num_iters,
+                                           T *_min_energy)
 {
     int tid = threadIdx.x;
     int block_id = blockIdx.x;
 
     T* cur_spin = &_spins[_size * block_id];
 
-    T energy = dot_product(_h, cur_spin, _size) + dot_product_mxv(_mat, cur_spin, _size);
-    atomicMin(&_min_energy[0], energy);
+    T dp_s = dot_product(_h, cur_spin, _size);
+    T dp_mxv = dot_product_mxv(_mat, cur_spin, _size);
+    T energy = dp_s + dp_mxv;
+
+    if(tid == 0)
+        atomicMin(&_min_energy[0], energy);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -316,8 +320,7 @@ auto cuda_mars_warp_per_mean_field(SquareMatrix <T> &_J_mat,
     SAFE_CALL(cudaMallocManaged((void**)&dev_mat, _n*_n*sizeof(T)));
     SAFE_CALL(cudaMemcpy(dev_mat, _J_mat.get_ptr(), _n*_n*sizeof(T), cudaMemcpyHostToDevice));
     SAFE_CALL(cudaMemcpy(dev_h, &(_h[0]), _n*sizeof(T), cudaMemcpyHostToDevice));
-
-    std::cout << "using warp per i policy" << std::endl;
+    
     double t1 = omp_get_wtime();
     for(base_type temperature = _t_min; temperature < _t_max; temperature += (_t_step * num_blocks * VWARP_NUM))
     {
@@ -332,14 +335,13 @@ auto cuda_mars_warp_per_mean_field(SquareMatrix <T> &_J_mat,
         SAFE_KERNEL_CALL((estimate_min_energy_kernel<<<VWARP_NUM*num_blocks, 32>>>(dev_mat,
                                     dev_s, dev_h, _n, num_steps, min_energy)));
 
-        for(int shift = 0; shift < 100; shift++)
+        /*for(int shift = 0; shift < 10; shift++)
         {
             std::vector<T> s(_n);
             cudaMemcpy(&s[0], dev_s + _n * shift, _n *sizeof(T), cudaMemcpyDeviceToHost);
             T energy = dot_product(vxm(s, _J_mat), s) + dot_product(_h, s);
-            std::cout << "energy : " << energy << std::endl;
-        }
-
+            std::cout << "energy : " << energy << " = " << dot_product(_h, s)  << " + " << dot_product(vxm(s, _J_mat), s) << std::endl;
+        }*/
     }
     double t2 = omp_get_wtime();
     std::cout << "CUDA calculations finished in " << (t2 - t1) << " seconds" << std::endl;
