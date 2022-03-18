@@ -2,7 +2,7 @@ COMPILER=$(CXX)
 
 ifeq ($(COMPILER),g++)
 	Include_Path = -I ../
-	Flags = -O2 -ftree-vectorize -std=c++14
+	Flags = -O2 -ftree-vectorize -std=c++11
 	ArchSuffix=_mc
 endif
 
