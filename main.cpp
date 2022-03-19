@@ -98,6 +98,9 @@ int main(int argc, char **argv)
                 num_gpus_installed = parser.get_num_gpus();
             }
 
+            // sort batches for better load balancing depending on the amount of work (t_max - tmin)/c_step
+            parser.sort_batches();
+
             double t1 = omp_get_wtime();
             #pragma omp parallel for num_threads(num_gpus_installed) schedule(dynamic)
             for(int batch_pos = 0; batch_pos < parser.get_num_batches(); batch_pos++)
@@ -105,6 +108,7 @@ int main(int argc, char **argv)
                 int tid = omp_get_thread_num(); // max = num_gpus_installed
                 int attached_gpu = tid;
                 cudaSetDevice(attached_gpu); // select which GPU we use
+                std::cout << "attaching to " << attached_gpu << " gpu" << std::endl;
                 BatchInfo info = parser.get_batch_info(batch_pos);
                 double parallel_time = 0;
                 base_type parallel_energy = parallel_mars<base_type>(J, h, n, info.t_min, info.t_max, info.c_step, d_min, info.alpha, parallel_time);

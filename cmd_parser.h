@@ -13,6 +13,8 @@ struct BatchInfo
     {
         std::cout << "tmin: " << t_min << " tmax: " << t_max << " c_step: " << c_step << " alpha: " << alpha << std::endl;
     }
+
+    inline double work_amount() const { return (t_max - t_min)/c_step;};
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -52,6 +54,8 @@ public:
 
     int get_num_batches() {return (int)batches_data.size();};
     BatchInfo get_batch_info(int _batch_num) {return batches_data[_batch_num];};
+
+    void sort_batches();
 
     double get_t_min() {return t_min;};
     double get_t_max() {return t_max;};

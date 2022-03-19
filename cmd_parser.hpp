@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -143,6 +144,22 @@ void Parser::parse_batch_file()
         ss >> info.c_step;
         ss >> info.alpha;
         batches_data.push_back(info);
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Parser::sort_batches()
+{
+    if(batch_file_provided())
+    {
+        std::sort(batches_data.begin(), batches_data.end(),
+             [](const BatchInfo & a, const BatchInfo & b) -> bool
+             {
+                 return a.work_amount() > b.work_amount();
+             });
+        for(auto i: batches_data)
+            std::cout << i.work_amount() << std::endl;
     }
 }
 
