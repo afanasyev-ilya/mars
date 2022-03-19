@@ -225,6 +225,20 @@ int round_up(int numToRound, int multiple)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
+__global__ void set_temperatures_kernel(T _temperature,
+                                        T _c_step,
+                                        int _size,
+                                        T *_temperatures)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if(idx < _size)
+        _temperatures[idx] = _temperature + _c_step * idx;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
 T cuda_mars_warp_per_mean_field(SquareMatrix <T> &_J_mat,
                                 std::vector<T> &_h,
                                 int _n,
@@ -269,8 +283,7 @@ T cuda_mars_warp_per_mean_field(SquareMatrix <T> &_J_mat,
     {
         gpu_fill_rand(dev_s, _n*num_blocks*VWARP_NUM);
 
-        for(int i = 0; i < num_blocks*VWARP_NUM; i++)
-            dev_temperatures[i] = temperature + _c_step*i;
+        SAFE_KERNEL_CALL((set_temperatures_kernel<<< (num_blocks*VWARP_NUM - 1)/BLOCK_SIZE + 1, BLOCK_SIZE >>> (temperature, _c_step, num_blocks*VWARP_NUM, dev_temperatures)));
 
         SAFE_KERNEL_CALL((mars_mc_warp_per_mean_field_kernel<<<num_blocks , block_size>>>(dev_mat,
                                  dev_s, dev_h, _n, _c_step, _d_min, _alpha, dev_temperatures)));
@@ -354,14 +367,15 @@ public:
 
         cudaMemcpyAsync(dev_mat, _J_mat.get_ptr(), _n*_n*sizeof(T), cudaMemcpyHostToDevice, _stream);
         cudaMemcpyAsync(dev_h, &(_h[0]), _n*sizeof(T), cudaMemcpyHostToDevice, _stream);
+        std::vector<T>cpu_spins(_n*num_blocks*VWARP_NUM);
 
         double t1 = omp_get_wtime();
         for(base_type temperature = _t_min; temperature < _t_max; temperature += (_c_step * num_blocks * VWARP_NUM))
         {
-            cpu_fill_rand(dev_s, _n*num_blocks*VWARP_NUM);
+            cpu_fill_rand(&(cpu_spins[0]), _n*num_blocks*VWARP_NUM); // can't do using curand since streams
+            cudaMemcpyAsync(dev_s, &(cpu_spins[0]), _n*num_blocks*VWARP_NUM*sizeof(T), cudaMemcpyHostToDevice, _stream);
 
-            for(int i = 0; i < num_blocks*VWARP_NUM; i++)
-                dev_temperatures[i] = temperature + _c_step*i;
+            set_temperatures_kernel<<< (num_blocks*VWARP_NUM - 1)/BLOCK_SIZE + 1, BLOCK_SIZE >>> (temperature, _c_step, num_blocks*VWARP_NUM, dev_temperatures);
 
             mars_mc_warp_per_mean_field_kernel<<<num_blocks , block_size, 0, _stream>>>(dev_mat,
                     dev_s, dev_h, _n, _c_step, _d_min, _alpha, dev_temperatures);
