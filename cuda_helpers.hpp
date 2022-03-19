@@ -36,25 +36,6 @@ __device__ static float atomicMin(double* address, double val)
     return __longlong_as_double(old);
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-__forceinline__ __device__ unsigned lane_id()
-{
-    unsigned ret;
-    asm volatile ("mov.u32 %0, %laneid;" : "=r"(ret));
-    return ret;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-__forceinline__ __device__ unsigned warp_id()
-{
-    // this is not equal to threadIdx.x / 32
-    unsigned ret;
-    asm volatile ("mov.u32 %0, %warpid;" : "=r"(ret));
-    return ret;
-}
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 double free_memory_size()
@@ -84,54 +65,6 @@ __device__ __forceinline__ _T virt_warp_reduce_sum(_T val)
     for (int offset = VWARP_SIZE/2; offset > 0; offset /= 2)
         val += __shfl_down_sync(0xffffffff, val, offset);
     return val;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-template <typename _T>
-__inline__ __device__ _T block_reduce_sum(_T val)
-{
-    static __shared__ _T shared[32]; // Shared mem for 32 partial sums
-    int lane =  threadIdx.x % 32;
-    int wid =  threadIdx.x / 32;
-
-    val = warp_reduce_sum(val);     // Each warp performs partial reduction
-
-    if (lane==0)
-        shared[wid]=val; // Write reduced value to shared memory
-
-    __syncthreads();              // Wait for all partial reductions
-
-    //read from shared memory only if that warp existed
-    val = (threadIdx.x < blockDim.x / warpSize) ? shared[lane] : 0;
-
-    if(wid == 0)
-    val = warp_reduce_sum(val); //Final reduce within first warp
-
-    return val;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-template <typename _T>
-__forceinline__ __device__ _T block_reduce_shmem(_T val, int tid)
-{
-    __shared__ _T sdata[BLOCK_SIZE];
-
-    sdata[tid] = val;
-    __syncthreads();
-
-    // do reduction in shared mem
-    for (unsigned int s = blockDim.x / 2; s > 0; s >>= 1)
-    {
-        if (tid < s)
-        {
-            sdata[tid] += sdata[tid + s];
-        }
-        __syncthreads();
-    }
-
-    return sdata[0];
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
