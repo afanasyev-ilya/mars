@@ -9,7 +9,7 @@ Parser::Parser()
     do_check = false;
     mtx_dim = 0;
 
-    t_min = 1, t_max = 10;
+    t_min = 0, t_max = 10;
     c_step = 1; // as in the paper
     d_min = 0.0001; // as in the paper
     alpha = 0.5;
@@ -139,6 +139,7 @@ void Parser::parse_batch_file()
 
     std::ifstream file(batch_file_name);
     std::string line;
+
     while (std::getline(file, line))
     {
         std::stringstream ss(line);
@@ -149,7 +150,11 @@ void Parser::parse_batch_file()
         ss >> info.alpha;
         batches_data.push_back(info);
         if(info.t_min >= info.t_max)
+        {
+            std::cout << "error at reading batch " << batches_data.size() - 1 << std::endl;
+            info.print();
             throw "Error! t_min >= t_max is not supported!";
+        }
     }
     file.close();
 }

@@ -32,6 +32,21 @@ void __global__ process_large_matrix_kernel(T *_data, int _size)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+template <typename T>
+void cpu_fill_rand(T *_data, int _size)
+{
+    std::random_device rd;
+    std::mt19937 rng(rd());
+    std::uniform_real_distribution<T> uni(-1, 1);
+
+    for(int i = 0; i < _size; i++)
+    {
+        _data[i] = uni(rng);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void gpu_fill_rand(double *_data, int _size)
 {
     curandGenerator_t randGen;
@@ -275,6 +290,81 @@ T cuda_mars_warp_per_mean_field(SquareMatrix <T> &_J_mat,
     SAFE_CALL(cudaFree(dev_temperatures));
     T min_energy_val = min_energy[0];
     SAFE_CALL(cudaFree(min_energy));
+
+    return min_energy_val;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+T cuda_mars_streams(SquareMatrix <T> &_J_mat,
+                    std::vector<T> &_h,
+                    int _n,
+                    int _t_min,
+                    int _t_max,
+                    T _c_step,
+                    T _d_min,
+                    T _alpha,
+                    double &_time,
+                    cudaStream_t &_stream)
+{
+    double free_mem = 0.5/*not to waste all*/*free_memory_size();
+    int max_blocks_mem_fit = (free_mem*1024*1024*1024 - _n*_n*sizeof(T))/ (_n *sizeof(T));
+    int num_steps = round_up((_t_max - _t_min) / _c_step, VWARP_NUM);
+    int block_size = BLOCK_SIZE;
+    int num_blocks = min(num_steps, max_blocks_mem_fit)/VWARP_NUM;
+
+    #ifdef __DEBUG_INFO__
+    std::cout << "we can simultaneously store " << max_blocks_mem_fit << " spins in " << free_mem << " GB of available memory" << std::endl;
+    std::cout << "number of temperatures steps: " << num_steps << std::endl;
+    std::cout << "matrix size: " << _n << std::endl;
+    std::cout << "estimated block size: " << block_size << std::endl;
+    std::cout << "estimated number of blocks: " << num_blocks << std::endl;
+    std::cout << "we will do  " << num_blocks * VWARP_NUM << " MC steps in parallel" << std::endl;
+    std::cout << "Using CUDA mars (parallelism for different MC steps)" << std::endl;
+    #endif
+
+    T *dev_s, *dev_h, *dev_temperatures;
+    T *min_energy;
+    cudaMallocManaged((void**)&dev_s, VWARP_NUM*_n*num_blocks*sizeof(T));
+    cudaMallocManaged((void**)&dev_h, _n*sizeof(T));
+    cudaMallocManaged((void**)&dev_temperatures, VWARP_NUM*num_blocks*sizeof(T));
+    cudaMallocManaged((void**)&min_energy, sizeof(T));
+    min_energy[0] = std::numeric_limits<T>::max();
+
+    T *dev_mat;
+    cudaMallocManaged((void**)&dev_mat, _n*_n*sizeof(T));
+    cudaMemcpyAsync(dev_mat, _J_mat.get_ptr(), _n*_n*sizeof(T), cudaMemcpyHostToDevice, _stream);
+    cudaMemcpyAsync(dev_h, &(_h[0]), _n*sizeof(T), cudaMemcpyHostToDevice, _stream);
+
+    double t1 = omp_get_wtime();
+    for(base_type temperature = _t_min; temperature < _t_max; temperature += (_c_step * num_blocks * VWARP_NUM))
+    {
+        cpu_fill_rand(dev_s, _n*num_blocks*VWARP_NUM);
+
+        for(int i = 0; i < num_blocks*VWARP_NUM; i++)
+            dev_temperatures[i] = temperature + _c_step*i;
+
+        mars_mc_warp_per_mean_field_kernel<<<num_blocks , block_size, 0, _stream>>>(dev_mat,
+                                 dev_s, dev_h, _n, _c_step, _d_min, _alpha, dev_temperatures);
+
+        estimate_min_energy_kernel<<<VWARP_NUM*num_blocks, 32, 0, _stream>>>(dev_mat,
+                                 dev_s, dev_h, _n, num_steps, min_energy);
+    }
+    double t2 = omp_get_wtime();
+    _time = t2 - t1;
+
+    std::vector<T> result(_n);
+
+    cudaMemcpyAsync(&result[0], dev_s, sizeof(T)*_n, cudaMemcpyDeviceToHost, _stream);
+    T min_energy_val = 0;
+    cudaMemcpyAsync(&min_energy_val, min_energy, sizeof(T), cudaMemcpyDeviceToHost, _stream);
+
+    cudaFree(dev_s);
+    cudaFree(dev_mat);
+    cudaFree(dev_h);
+    cudaFree(dev_temperatures);
+    cudaFree(min_energy);
 
     return min_energy_val;
 }

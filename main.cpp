@@ -114,8 +114,13 @@ int main(int argc, char **argv)
                 SAFE_CALL(cudaSetDevice(attached_gpu)); // select which GPU we use
                 std::cout << "attaching to " << attached_gpu << " gpu" << std::endl;
                 BatchInfo info = parser.get_batch_info(batch_pos);
+
                 double parallel_time = 0;
-                base_type parallel_energy = parallel_mars<base_type>(J, h, n, info.t_min, info.t_max, info.c_step, d_min, info.alpha, parallel_time);
+                cudaStream_t stream;
+                cudaStreamCreate(&stream);
+                base_type parallel_energy = cuda_mars_streams<base_type>(J, h, n, info.t_min, info.t_max, info.c_step, d_min, info.alpha, parallel_time, stream);
+                cudaStreamDestroy(stream);
+
                 #pragma omp critical
                 {
                     std::cout << "batch № " << batch_pos << std::endl;
