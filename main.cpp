@@ -108,6 +108,7 @@ int main(int argc, char **argv)
             double t1 = omp_get_wtime();
             int num_streams = parser.get_num_streams();
             int num_batches = parser.get_num_batches();
+            std::cout << "NUM BATCHES: " << num_batches << std::endl;
             #pragma omp parallel for num_threads(num_gpus_installed) schedule(dynamic)
             for(int batch_first = 0; batch_first < num_batches; batch_first += num_streams)
             {
@@ -115,7 +116,7 @@ int main(int argc, char **argv)
                 int attached_gpu = tid;
                 SAFE_CALL(cudaSetDevice(attached_gpu)); // select which GPU we use
 
-                std::vector<SingleBatchElementCUDA<base_type>> cuda_batches(min(batch_first + num_streams, num_batches));
+                std::vector<SingleBatchElementCUDA<base_type>> cuda_batches(min(num_streams, num_batches - batch_first));
                 for(int i = 0; i < cuda_batches.size(); i++)
                 {
                     int batch_pos = batch_first + i;
