@@ -316,6 +316,8 @@ private:
     T *dev_s, *dev_h, *dev_temperatures;
     T *min_energy;
     T *dev_mat;
+    T *host_spins;
+    T *host_min_energy;
 
     int max_blocks_mem_fit;
     int num_steps;
@@ -323,10 +325,12 @@ private:
     int num_blocks;
 
 public:
-    void allocate(int _n,
-                  int _t_min,
-                  int _t_max,
-                  T _c_step)
+    void allocate_and_copy(int _n,
+                           int _t_min,
+                           int _t_max,
+                           T _c_step,
+                           SquareMatrix <T> &_J_mat,
+                           std::vector<T> &_h)
     {
         double free_mem = 0.5/*not to waste all*/*free_memory_size();
         max_blocks_mem_fit = (free_mem*1024*1024*1024 - _n*_n*sizeof(T))/ (_n *sizeof(T));
@@ -349,31 +353,34 @@ public:
         cudaMallocManaged((void**)&dev_temperatures, VWARP_NUM*num_blocks*sizeof(T));
         cudaMallocManaged((void**)&min_energy, sizeof(T));
         cudaMallocManaged((void**)&dev_mat, _n*_n*sizeof(T));
+
+        cudaMallocHost((void**)&host_spins, _n*num_blocks*VWARP_NUM*sizeof(T));
+        cudaMallocHost((void**)&host_min_energy, sizeof(T));
+
+        T max_val = std::numeric_limits<T>::max();
+        cudaMemcpy(min_energy, &max_val, sizeof(T)*_n, cudaMemcpyHostToDevice);
+
+        cudaMemcpy(dev_mat, _J_mat.get_ptr(), _n*_n*sizeof(T), cudaMemcpyHostToDevice);
+        cudaMemcpy(dev_h, &(_h[0]), _n*sizeof(T), cudaMemcpyHostToDevice);
+
+        cpu_fill_rand(host_spins, _n*num_blocks*VWARP_NUM); // can't do using curand since streams
+        cudaMemcpy(dev_s, host_spins, _n*num_blocks*VWARP_NUM*sizeof(T), cudaMemcpyHostToDevice);
     }
 
-    T run(SquareMatrix <T> &_J_mat,
-          std::vector<T> &_h,
-          int _n,
-          int _t_min,
-          int _t_max,
-          T _c_step,
-          T _d_min,
-          T _alpha,
-          double &_time,
-          cudaStream_t &_stream)
+    void run(SquareMatrix <T> &_J_mat,
+             std::vector<T> &_h,
+             int _n,
+             int _t_min,
+             int _t_max,
+             T _c_step,
+             T _d_min,
+             T _alpha,
+             cudaStream_t &_stream)
     {
-        T max_val = std::numeric_limits<T>::max();
-        cudaMemcpyAsync(min_energy, &max_val, sizeof(T)*_n, cudaMemcpyHostToDevice, _stream);
-
-        cudaMemcpyAsync(dev_mat, _J_mat.get_ptr(), _n*_n*sizeof(T), cudaMemcpyHostToDevice, _stream);
-        cudaMemcpyAsync(dev_h, &(_h[0]), _n*sizeof(T), cudaMemcpyHostToDevice, _stream);
-        std::vector<T>cpu_spins(_n*num_blocks*VWARP_NUM);
-
-        double t1 = omp_get_wtime();
         for(base_type temperature = _t_min; temperature < _t_max; temperature += (_c_step * num_blocks * VWARP_NUM))
         {
-            cpu_fill_rand(&(cpu_spins[0]), _n*num_blocks*VWARP_NUM); // can't do using curand since streams
-            cudaMemcpyAsync(dev_s, &(cpu_spins[0]), _n*num_blocks*VWARP_NUM*sizeof(T), cudaMemcpyHostToDevice, _stream);
+            //cpu_fill_rand(host_spins, _n*num_blocks*VWARP_NUM); // can't do using curand since streams
+            //cudaMemcpyAsync(dev_s, host_spins, _n*num_blocks*VWARP_NUM*sizeof(T), cudaMemcpyHostToDevice, _stream);
 
             set_temperatures_kernel<<< (num_blocks*VWARP_NUM - 1)/BLOCK_SIZE + 1, BLOCK_SIZE >>> (temperature, _c_step, num_blocks*VWARP_NUM, dev_temperatures);
 
@@ -383,15 +390,13 @@ public:
             estimate_min_energy_kernel<<<VWARP_NUM*num_blocks, 32, 0, _stream>>>(dev_mat,
                     dev_s, dev_h, _n, num_steps, min_energy);
         }
-        double t2 = omp_get_wtime();
-        _time = t2 - t1;
+    }
 
-        std::vector<T> result(_n);
-
-        cudaMemcpyAsync(&result[0], dev_s, sizeof(T)*_n, cudaMemcpyDeviceToHost, _stream);
-        T min_energy_val = 0;
-        cudaMemcpyAsync(&min_energy_val, min_energy, sizeof(T), cudaMemcpyDeviceToHost, _stream);
-        return min_energy_val;
+    T obtain_result()
+    {
+        cudaDeviceSynchronize();
+        cudaMemcpy(host_min_energy, min_energy, sizeof(T), cudaMemcpyDeviceToHost);
+        return host_min_energy[0];
     }
 
     void free()
@@ -401,6 +406,8 @@ public:
         cudaFree(dev_h);
         cudaFree(dev_temperatures);
         cudaFree(min_energy);
+        cudaFreeHost(host_spins);
+        cudaFreeHost(host_min_energy);
     }
 };
 

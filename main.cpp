@@ -120,25 +120,35 @@ int main(int argc, char **argv)
                 {
                     int batch_pos = batch_first + i;
                     BatchInfo info = parser.get_batch_info(batch_pos);
-                    cuda_batches[i].allocate(n, info.t_min, info.t_max, info.c_step);
+                    cuda_batches[i].allocate_and_copy(n, info.t_min, info.t_max, info.c_step, J, h);
+                }
+
+                cudaStream_t streams[32];
+                for(int i = 0; i < cuda_batches.size(); i++)
+                    cudaStreamCreate(&streams[i]);
+
+                for(int i = 0; i < cuda_batches.size(); i++)
+                {
+                    int batch_pos = batch_first + i;
+                    BatchInfo info = parser.get_batch_info(batch_pos);
+                    cuda_batches[i].run(J, h, n, info.t_min, info.t_max, info.c_step, d_min, info.alpha, streams[i]);
                 }
 
                 for(int i = 0; i < cuda_batches.size(); i++)
                 {
                     int batch_pos = batch_first + i;
                     BatchInfo info = parser.get_batch_info(batch_pos);
-                    double parallel_time = 0;
-                    cudaStream_t stream;
-                    cudaStreamCreate(&stream);
-                    base_type parallel_energy = cuda_batches[i].run(J, h, n, info.t_min, info.t_max, info.c_step, d_min, info.alpha, parallel_time, stream);
+                    base_type parallel_energy = cuda_batches[i].obtain_result();
                     #pragma omp critical
                     {
                         std::cout << "batch № " << batch_pos << std::endl;
                         info.print();
                         std::cout << "min energy: " << parallel_energy << std::endl;
                     }
-                    cudaStreamDestroy(stream);
                 }
+
+                for(int i = 0; i < cuda_batches.size(); i++)
+                    cudaStreamDestroy(streams[i]);
 
                 for(int i = 0; i < cuda_batches.size(); i++)
                 {
@@ -164,7 +174,6 @@ int main(int argc, char **argv)
     {
         std::cout << error << std::endl;
     }
-
 
     return 0;
 }
