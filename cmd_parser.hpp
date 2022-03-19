@@ -15,6 +15,7 @@ Parser::Parser()
     alpha = 0.5;
     batch_file_name = "";
     num_gpus = 0;
+    num_streams = 1;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -87,6 +88,11 @@ void Parser::parse_args(int _argc, char **_argv)
             num_gpus = std::atoi(_argv[++i]);
         }
 
+        if ((option == "-streams") || (option == "-nstreams"))
+        {
+            num_streams = std::atoi(_argv[++i]);
+        }
+
         if ((option == "-help") || (option == "-h"))
         {
             std::cout << "-dim [N], specifies the size of input matrix (required argument)" << std::endl;
@@ -100,6 +106,7 @@ void Parser::parse_args(int _argc, char **_argv)
             std::cout << "-alpha [N], specifies alpha (optional, default is 0.5)" << std::endl;
             std::cout << "-batch [file_name], specifies the name of file, which contains information about multiple runs with different parameters {tmin, tmax, cstep, alpha}" << std::endl;
             std::cout << "-ngpu [N], set N as the maximum number of GPUs used. Only available for batched mode." << std::endl;
+            std::cout << "-nstreams [N], set N as the maximum number of concurrent CUDA streams." << std::endl;
             std::cout << "-help, prints this message" << std::endl;
 
             throw "Help is requested, aborting...";
@@ -123,9 +130,10 @@ void Parser::parse_args(int _argc, char **_argv)
     else
     {
         std::cout << "batched mode:" << batch_file_provided() << std::endl;
+        if(num_gpus > 0)
+            std::cout << "ngpus:" << num_gpus << std::endl;
+        std::cout << "num streams: " << num_streams << std::endl;
     }
-    if(batch_file_provided() && num_gpus > 0)
-        std::cout << "ngpus:" << num_gpus << std::endl;
 
     if(t_min >= t_max)
         throw "Error! t_min >= t_max is not supported!";

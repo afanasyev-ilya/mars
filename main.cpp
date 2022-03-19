@@ -106,34 +106,45 @@ int main(int argc, char **argv)
             parser.sort_batches();
 
             double t1 = omp_get_wtime();
+            int num_streams = parser.get_num_streams();
+            int num_batches = parser.get_num_batches();
             #pragma omp parallel for num_threads(num_gpus_installed) schedule(dynamic)
-            for(int batch_first = 0; batch_first < parser.get_num_batches(); batch_first ++)
+            for(int batch_first = 0; batch_first < num_batches; batch_first += num_streams)
             {
                 int tid = omp_get_thread_num(); // max = num_gpus_installed
                 int attached_gpu = tid;
                 SAFE_CALL(cudaSetDevice(attached_gpu)); // select which GPU we use
 
-                int batch_pos = batch_first;
-
-                BatchInfo info = parser.get_batch_info(batch_pos);
-                SingleBatchElementCUDA<base_type> cur_batch;
-
-                cur_batch.allocate(n, info.t_min, info.t_max, info.c_step);
-
-                std::cout << "Hi! i'm running batches now" << std::endl;
-                double parallel_time = 0;
-                cudaStream_t stream;
-                cudaStreamCreate(&stream);
-                base_type parallel_energy = cur_batch.run(J, h, n, info.t_min, info.t_max, info.c_step, d_min, info.alpha, parallel_time, stream);
-                #pragma omp critical
+                std::vector<SingleBatchElementCUDA<base_type>> cuda_batches(min(batch_first + num_streams, num_batches));
+                for(int i = 0; i < cuda_batches.size(); i++)
                 {
-                    std::cout << "batch № " << batch_pos << std::endl;
-                    info.print();
-                    std::cout << "min energy: " << parallel_energy << std::endl;
+                    int batch_pos = batch_first + i;
+                    BatchInfo info = parser.get_batch_info(batch_pos);
+                    cuda_batches[i].allocate(n, info.t_min, info.t_max, info.c_step);
                 }
-                cudaStreamDestroy(stream);
 
-                cur_batch.free();
+                for(int i = 0; i < cuda_batches.size(); i++)
+                {
+                    int batch_pos = batch_first + i;
+                    BatchInfo info = parser.get_batch_info(batch_pos);
+                    double parallel_time = 0;
+                    cudaStream_t stream;
+                    cudaStreamCreate(&stream);
+                    base_type parallel_energy = cuda_batches[i].run(J, h, n, info.t_min, info.t_max, info.c_step, d_min, info.alpha, parallel_time, stream);
+                    #pragma omp critical
+                    {
+                        std::cout << "batch № " << batch_pos << std::endl;
+                        info.print();
+                        std::cout << "min energy: " << parallel_energy << std::endl;
+                    }
+                    cudaStreamDestroy(stream);
+                }
+
+                for(int i = 0; i < cuda_batches.size(); i++)
+                {
+                    int batch_pos = batch_first + i;
+                    cuda_batches[i].free();
+                }
             }
             double t2 = omp_get_wtime();
             std::cout << "processing whole batch time: " << (t2 - t1) << " seconds" << std::endl;

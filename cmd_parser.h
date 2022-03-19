@@ -31,6 +31,7 @@ private:
     double c_step;
     double d_min;
     double alpha;
+    int num_streams;
 
     std::string batch_file_name;
 
@@ -50,6 +51,7 @@ public:
     bool batch_file_provided() const {return !batch_file_name.empty();};
     bool num_gpus_is_set() const {return num_gpus != 0;};
     int get_num_gpus() const {return num_gpus;};
+    int get_num_streams() const {return num_streams;};
 
     int get_num_batches() {return (int)batches_data.size();};
     BatchInfo get_batch_info(int _batch_num) {return batches_data[_batch_num];};
