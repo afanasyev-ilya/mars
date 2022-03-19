@@ -123,7 +123,7 @@ int main(int argc, char **argv)
                     cuda_batches[i].allocate_and_copy(n, info.t_min, info.t_max, info.c_step, J, h);
                 }
 
-                cudaStream_t streams[32];
+                std::vector<cudaStream_t> streams(cuda_batches.size());
                 for(int i = 0; i < cuda_batches.size(); i++)
                     cudaStreamCreate(&streams[i]);
 
@@ -141,7 +141,7 @@ int main(int argc, char **argv)
                     base_type parallel_energy = cuda_batches[i].obtain_result();
                     #pragma omp critical
                     {
-                        std::cout << "batch № " << batch_pos << std::endl;
+                        std::cout << "run № " << batch_pos << std::endl;
                         info.print();
                         std::cout << "min energy: " << parallel_energy << std::endl;
                     }
