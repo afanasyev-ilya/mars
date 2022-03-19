@@ -107,7 +107,7 @@ int main(int argc, char **argv)
             {
                 int tid = omp_get_thread_num(); // max = num_gpus_installed
                 int attached_gpu = tid;
-                cudaSetDevice(attached_gpu); // select which GPU we use
+                SAFE_CALL(cudaSetDevice(attached_gpu)); // select which GPU we use
                 std::cout << "attaching to " << attached_gpu << " gpu" << std::endl;
                 BatchInfo info = parser.get_batch_info(batch_pos);
                 double parallel_time = 0;

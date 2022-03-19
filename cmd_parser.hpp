@@ -85,7 +85,6 @@ void Parser::parse_args(int _argc, char **_argv)
         if ((option == "-gpus") || (option == "-ngpu"))
         {
             num_gpus = std::atoi(_argv[++i]);
-            parse_batch_file();
         }
 
         if ((option == "-help") || (option == "-h"))
@@ -133,6 +132,8 @@ void Parser::parse_args(int _argc, char **_argv)
 
 void Parser::parse_batch_file()
 {
+    batches_data.clear();
+
     std::ifstream file(batch_file_name);
     std::string line;
     while (std::getline(file, line))
@@ -145,6 +146,7 @@ void Parser::parse_batch_file()
         ss >> info.alpha;
         batches_data.push_back(info);
     }
+    file.close();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

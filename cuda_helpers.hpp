@@ -59,16 +59,11 @@ __forceinline__ __device__ unsigned warp_id()
 
 double free_memory_size()
 {
-    int num_gpus;
     size_t free, total;
-    cudaGetDeviceCount( &num_gpus );
-    for ( int gpu_id = 0; gpu_id < num_gpus; gpu_id++ ) {
-        cudaSetDevice( gpu_id );
-        int id;
-        cudaGetDevice( &id );
-        cudaMemGetInfo( &free, &total );
-        return free/1e9; // converting to GB
-    }
+    int id;
+    cudaGetDevice( &id );
+    cudaMemGetInfo( &free, &total );
+    return free/1e9; // converting to GB
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
