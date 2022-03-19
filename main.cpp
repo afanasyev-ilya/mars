@@ -66,11 +66,15 @@ int main(int argc, char **argv)
 
             double parallel_time = 0;
             base_type parallel_energy = parallel_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, parallel_time);
+            std::cout << "CUDA calculations finished in " << parallel_time << " seconds" << std::endl;
+            std::cout << "CUDA min energy: " << std::setprecision(10) << parallel_energy << std::endl;
 
             if(parser.check())
             {
                 double seq_time = 0;
                 base_type sequential_energy = sequential_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, seq_time);
+                std::cout << "CPU calculations finished in " << seq_time << " seconds" << std::endl;
+                std::cout << "CPU min energy: " << std::setprecision(10) << sequential_energy << std::endl;
                 if(parallel_time > 0)
                     std::cout << "acceleration: " << seq_time / parallel_time << std::endl;
 

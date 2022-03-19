@@ -338,12 +338,6 @@ T cuda_mars_warp_per_mean_field(SquareMatrix <T> &_J_mat,
                                     dev_s, dev_h, _n, num_steps, min_energy)));
     }
     double t2 = omp_get_wtime();
-
-    #ifdef __DEBUG_INFO__
-    std::cout << "CUDA calculations finished in " << (t2 - t1) << " seconds" << std::endl;
-    std::cout << "CUDA min energy: " << std::setprecision(10) << min_energy[0] << std::endl;
-    #endif
-
     _time = t2 - t1;
 
     std::vector<T> result(_n);
