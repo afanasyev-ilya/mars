@@ -2,7 +2,7 @@ COMPILER=$(CXX)
 
 ifeq ($(COMPILER),g++)
 	Include_Path = -I ../
-	Flags = -O2 -ftree-vectorize -std=c++11
+	Flags = -O2 -ftree-vectorize -std=c++11 -fopenmp
 	ArchSuffix=_mc
 endif
 
@@ -10,7 +10,7 @@ ifeq ($(COMPILER),nvcc)
 	CUDA_DIR = /usr/local/cuda/
 	CUDA_COMPILER = $(CUDA_DIR)/bin/nvcc
 	Include_Path = -I $(CUDA_DIR)/include -I ../external_libraries/cub -I ../
-	Flags = -O2 -D __USE_CUDA__ -x cu -w -m64 -std=c++11 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_70,code=sm_70
+	Flags = -O2 -D __USE_CUDA__ -x cu -w -m64 -std=c++11 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_70,code=sm_70 -Xcompiler -fopenmp
 	Library_Path = -L $(CUDA_DIR)/lib -L $(CUDA_DIR)/lib64
 	Libraries = -lcudart -lcudadevrt -lcudadevrt -Xcompiler -fopenmp -lcurand
 	ArchSuffix=_cu

@@ -80,14 +80,37 @@ int main(int argc, char **argv)
         }
         else
         {
+            #ifdef __USE_CUDA__
+            int num_gpus_installed = 0;
+            if(parser.num_gpus_is_set())
+            {
+                 cudaGetDeviceCount(&num_gpus_installed);
+            }
+            else
+            {
+                num_gpus_installed = parser.get_num_gpus();
+            }
+
+            #pragma omp parallel for num_threads(num_gpus_installed)
             for(int batch_pos = 0; batch_pos < parser.get_num_batches(); batch_pos++)
             {
+                int tid = omp_get_thread_num(); // max = num_gpus_installed
+                int attached_gpu = tid;
+                cudaSetDevice(attached_gpu); // select which GPU we use
                 BatchInfo info = parser.get_batch_info(batch_pos);
                 double parallel_time = 0;
                 info.print();
                 base_type parallel_energy = parallel_mars<base_type>(J, h, n, info.t_min, info.t_max, info.c_step, d_min, info.alpha, t_step, parallel_time);
-                std::cout << "batch " << batch_pos << " energy: " << parallel_energy << std::endl;
+                #pragma omp critical
+                {
+                    std::cout << "batch " << batch_pos << " energy: " << parallel_energy << std::endl;
+                }
             }
+            #else
+            std::cout << "Running in batched mode does not make sense without at least GPU installed, "
+                         "and program compiled without CUDA support!" << std::endl;
+            return 0;
+            #endif
         }
     }
     catch (std::string error)

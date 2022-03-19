@@ -24,6 +24,7 @@ private:
     std::string mtx_file_name;
     bool do_check;
     int mtx_dim;
+    int num_gpus;
 
     double t_min, t_max;
     double c_step;
@@ -46,7 +47,9 @@ public:
     bool check() const {return do_check;};
     std::string get_mtx_file_name() const {return mtx_file_name; };
     std::string get_batch_file_name() const {return batch_file_name; };
-    bool batch_file_provided() const {if(batch_file_name == "") return false; else return true;};
+    bool batch_file_provided() const {return !batch_file_name.empty();};
+    bool num_gpus_is_set() const {return num_gpus != 0;};
+    int get_num_gpus() const {return num_gpus;};
 
     int get_num_batches() {return (int)batches_data.size();};
     BatchInfo get_batch_info(int _batch_num) {return batches_data[_batch_num];};
