@@ -126,8 +126,8 @@ int main(int argc, char **argv)
             double t2 = omp_get_wtime();
             std::cout << "processing whole batch time: " << (t2 - t1) << " seconds" << std::endl;
             #else
-            std::cout << "Running in batched mode does not make sense without at least GPU installed, "
-                         "and program compiled without CUDA support!" << std::endl;
+            std::cout << "Running in batched mode does not make sense without at least one GPU installed, "
+                         "or program compiled without CUDA support!" << std::endl;
 
             return 0;
             #endif

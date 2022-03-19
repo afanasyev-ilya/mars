@@ -126,6 +126,9 @@ void Parser::parse_args(int _argc, char **_argv)
     }
     if(batch_file_provided() && num_gpus > 0)
         std::cout << "ngpus:" << num_gpus << std::endl;
+
+    if(t_min >= t_max)
+        throw "Error! t_min >= t_max is not supported!";
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -145,6 +148,8 @@ void Parser::parse_batch_file()
         ss >> info.c_step;
         ss >> info.alpha;
         batches_data.push_back(info);
+        if(info.t_min >= info.t_max)
+            throw "Error! t_min >= t_max is not supported!";
     }
     file.close();
 }
