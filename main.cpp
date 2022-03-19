@@ -5,6 +5,7 @@
 #include <fstream>
 #include <sstream>
 #include <iomanip>
+#include <omp.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -30,12 +31,16 @@ int main(int argc, char **argv)
             std::cout << "Generating random matrix of size " << parser.get_mtx_dim() << std::endl;
             int dim_size = parser.get_mtx_dim();
             J.fill_with_rands(dim_size);
+            #ifdef __DEBUG_INFO__
             J.print();
+            #endif
         }
         else
         {
             J.read_from_file(parser.get_mtx_file_name());
+            #ifdef __DEBUG_INFO__
             J.print();
+            #endif
         }
 
         // common params
@@ -48,7 +53,9 @@ int main(int argc, char **argv)
         if(check_if_h_vector_provided(parser.get_mtx_file_name(), parser.get_mtx_dim()))
         {
             read_from_file(h, parser.get_mtx_file_name());
+            #ifdef __DEBUG_INFO__
             print(h);
+            #endif
         }
 
         // run main computations
@@ -82,9 +89,10 @@ int main(int argc, char **argv)
         {
             #ifdef __USE_CUDA__
             int num_gpus_installed = 0;
-            if(parser.num_gpus_is_set())
+            if(!parser.num_gpus_is_set())
             {
                  cudaGetDeviceCount(&num_gpus_installed);
+                 std::cout << "automatically detected to run on " << num_gpus_installed << " GPUs" << std::endl;
             }
             else
             {
@@ -99,11 +107,12 @@ int main(int argc, char **argv)
                 cudaSetDevice(attached_gpu); // select which GPU we use
                 BatchInfo info = parser.get_batch_info(batch_pos);
                 double parallel_time = 0;
-                info.print();
                 base_type parallel_energy = parallel_mars<base_type>(J, h, n, info.t_min, info.t_max, info.c_step, d_min, info.alpha, t_step, parallel_time);
                 #pragma omp critical
                 {
-                    std::cout << "batch " << batch_pos << " energy: " << parallel_energy << std::endl;
+                    std::cout << "batch № " << batch_pos << std::endl;
+                    info.print();
+                    std::cout << "min energy: " << parallel_energy << std::endl;
                 }
             }
             #else

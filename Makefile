@@ -3,6 +3,7 @@ COMPILER=$(CXX)
 ifeq ($(COMPILER),g++)
 	Include_Path = -I ../
 	Flags = -O2 -ftree-vectorize -std=c++11 -fopenmp
+	Libraries = -fopenmp
 	ArchSuffix=_mc
 endif
 

@@ -297,18 +297,20 @@ T cuda_mars_warp_per_mean_field(SquareMatrix <T> &_J_mat,
 {
     double free_mem = 0.5/*not to waste all*/*free_memory_size();
     int max_blocks_mem_fit = (free_mem*1024*1024*1024 - _n*_n*sizeof(T))/ (_n *sizeof(T));
-    std::cout << "we can simultaneously store " << max_blocks_mem_fit << " spins in " << free_mem << " GB of available memory" << std::endl;
-
     int num_steps = round_up((_t_max - _t_min) / _t_step, VWARP_NUM);
-    std::cout << "number of temperatures steps: " << num_steps << std::endl;
-    std::cout << "matrix size: " << _n << std::endl;
     int block_size = BLOCK_SIZE;
     int num_blocks = min(num_steps, max_blocks_mem_fit)/VWARP_NUM;
+
+    #ifdef __DEBUG_INFO__
+    std::cout << "we can simultaneously store " << max_blocks_mem_fit << " spins in " << free_mem << " GB of available memory" << std::endl;
+    std::cout << "number of temperatures steps: " << num_steps << std::endl;
+    std::cout << "matrix size: " << _n << std::endl;
     std::cout << "estimated block size: " << block_size << std::endl;
     std::cout << "estimated number of blocks: " << num_blocks << std::endl;
     std::cout << "we will do  " << num_blocks * VWARP_NUM << " MC steps in parallel" << std::endl;
-
     std::cout << "Using CUDA mars (parallelism for different MC steps)" << std::endl;
+    #endif
+
     T *dev_s, *dev_h, *dev_temperatures;
     T *min_energy;
     SAFE_CALL(cudaMallocManaged((void**)&dev_s, VWARP_NUM*_n*num_blocks*sizeof(T)));
@@ -337,8 +339,12 @@ T cuda_mars_warp_per_mean_field(SquareMatrix <T> &_J_mat,
                                     dev_s, dev_h, _n, num_steps, min_energy)));
     }
     double t2 = omp_get_wtime();
+
+    #ifdef __DEBUG_INFO__
     std::cout << "CUDA calculations finished in " << (t2 - t1) << " seconds" << std::endl;
     std::cout << "CUDA min energy: " << std::setprecision(10) << min_energy[0] << std::endl;
+    #endif
+
     _time = t2 - t1;
 
     std::vector<T> result(_n);

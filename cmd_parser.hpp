@@ -14,6 +14,7 @@ Parser::Parser()
     alpha = 0.5;
     t_step = 0.001;
     batch_file_name = "";
+    num_gpus = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -118,13 +119,19 @@ void Parser::parse_args(int _argc, char **_argv)
         throw "Aborting...";
     }
 
-    std::cout << "t_min:" << t_min << std::endl;
-    std::cout << "t_max:" << t_max << std::endl;
-    std::cout << "c_step:" << c_step << std::endl;
-    std::cout << "d_min:" << d_min << std::endl;
-    std::cout << "alpha:" << alpha << std::endl;
-    std::cout << "t_step:" << t_step << std::endl;
-    std::cout << "batched mode:" << batch_file_provided() << std::endl;
+    if(!batch_file_provided())
+    {
+        std::cout << "t_min:" << t_min << std::endl;
+        std::cout << "t_max:" << t_max << std::endl;
+        std::cout << "c_step:" << c_step << std::endl;
+        std::cout << "d_min:" << d_min << std::endl;
+        std::cout << "alpha:" << alpha << std::endl;
+        std::cout << "t_step:" << t_step << std::endl;
+    }
+    else
+    {
+        std::cout << "batched mode:" << batch_file_provided() << std::endl;
+    }
     if(batch_file_provided() && num_gpus > 0)
         std::cout << "ngpus:" << num_gpus << std::endl;
 }

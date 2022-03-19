@@ -109,8 +109,6 @@ int get_number_of_lines_in_file(const std::string &_file_name)
     std::string text;
     std::ifstream openFile(_file_name.c_str());
 
-    std::cout << std::endl;
-
     if(!openFile)
     {
         return 0;
@@ -136,11 +134,13 @@ bool check_if_h_vector_provided(const std::string &_file_name, int dim_size)
     if(lines_number == 0)
         return false;
 
-    std::cout << "lines number: " << lines_number << std::endl;
     int expected_lines_number_with_h = (dim_size - 1)*((dim_size - 1) + 1)/2 + dim_size;
     int expected_lines_number_without_h = (dim_size - 1)*((dim_size - 1) + 1)/2;
+    #ifdef __DEBUG_INFO__
+    std::cout << "lines number: " << lines_number << std::endl;
     std::cout << "expected_lines_number_WITH_h: " << expected_lines_number_with_h << std::endl;
     std::cout << "expected_lines_number_WITHOUT_h: " << expected_lines_number_without_h << std::endl;
+    #endif
 
     bool h_is_provided;
     if(lines_number == expected_lines_number_with_h)
