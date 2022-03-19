@@ -108,7 +108,6 @@ int main(int argc, char **argv)
             double t1 = omp_get_wtime();
             int num_streams = parser.get_num_streams();
             int num_batches = parser.get_num_batches();
-            std::cout << "NUM BATCHES: " << num_batches << std::endl;
             #pragma omp parallel for num_threads(num_gpus_installed) schedule(dynamic)
             for(int batch_first = 0; batch_first < num_batches; batch_first += num_streams)
             {

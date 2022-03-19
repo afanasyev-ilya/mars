@@ -178,8 +178,6 @@ void Parser::sort_batches()
              {
                  return a.work_amount() > b.work_amount();
              });
-        for(auto i: batches_data)
-            std::cout << i.work_amount() << std::endl;
     }
 }
 
