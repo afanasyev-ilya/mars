@@ -99,7 +99,8 @@ int main(int argc, char **argv)
                 num_gpus_installed = parser.get_num_gpus();
             }
 
-            #pragma omp parallel for num_threads(num_gpus_installed)
+            double t1 = omp_get_wtime();
+            #pragma omp parallel for num_threads(num_gpus_installed) schedule(dynamic)
             for(int batch_pos = 0; batch_pos < parser.get_num_batches(); batch_pos++)
             {
                 int tid = omp_get_thread_num(); // max = num_gpus_installed
@@ -115,9 +116,12 @@ int main(int argc, char **argv)
                     std::cout << "min energy: " << parallel_energy << std::endl;
                 }
             }
+            double t2 = omp_get_wtime();
+            std::cout << "processing whole batch time: " << (t2 - t1) << " seconds" << std::endl;
             #else
             std::cout << "Running in batched mode does not make sense without at least GPU installed, "
                          "and program compiled without CUDA support!" << std::endl;
+
             return 0;
             #endif
         }
