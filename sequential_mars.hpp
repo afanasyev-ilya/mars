@@ -44,7 +44,6 @@ T sequential_mars(SquareMatrix<T> &_J_mat,
                   T _c_step,
                   T _d_min,
                   T _alpha,
-                  T _t_step,
                   double &_time)
 {
     std::random_device rd;
@@ -55,10 +54,10 @@ T sequential_mars(SquareMatrix<T> &_J_mat,
     int iters = 0;
 
     T min_energy = std::numeric_limits<T>::max();
-    double num_steps = (_t_max - _t_min)/_t_step;
+    double num_steps = (_t_max - _t_min)/_c_step;
     double t1 = omp_get_wtime();
     T current_temperature = 0;
-    for(base_type temperature = _t_min; temperature < _t_max; temperature += _t_step)
+    for(base_type temperature = _t_min; temperature < _t_max; temperature += _c_step)
     {
         for(int i = 0; i < s.size(); i++)
         {

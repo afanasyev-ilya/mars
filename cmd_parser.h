@@ -30,7 +30,6 @@ private:
     double c_step;
     double d_min;
     double alpha;
-    double t_step;
 
     std::string batch_file_name;
 
@@ -59,7 +58,6 @@ public:
     double get_c_step() {return c_step;};
     double get_d_min() {return d_min;};
     double get_alpha() {return alpha;};
-    double get_t_step() {return t_step;};
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

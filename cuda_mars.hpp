@@ -292,12 +292,11 @@ T cuda_mars_warp_per_mean_field(SquareMatrix <T> &_J_mat,
                                 T _c_step,
                                 T _d_min,
                                 T _alpha,
-                                T _t_step,
                                 double &_time)
 {
     double free_mem = 0.5/*not to waste all*/*free_memory_size();
     int max_blocks_mem_fit = (free_mem*1024*1024*1024 - _n*_n*sizeof(T))/ (_n *sizeof(T));
-    int num_steps = round_up((_t_max - _t_min) / _t_step, VWARP_NUM);
+    int num_steps = round_up((_t_max - _t_min) / _c_step, VWARP_NUM);
     int block_size = BLOCK_SIZE;
     int num_blocks = min(num_steps, max_blocks_mem_fit)/VWARP_NUM;
 
@@ -325,12 +324,12 @@ T cuda_mars_warp_per_mean_field(SquareMatrix <T> &_J_mat,
     SAFE_CALL(cudaMemcpy(dev_h, &(_h[0]), _n*sizeof(T), cudaMemcpyHostToDevice));
 
     double t1 = omp_get_wtime();
-    for(base_type temperature = _t_min; temperature < _t_max; temperature += (_t_step * num_blocks * VWARP_NUM))
+    for(base_type temperature = _t_min; temperature < _t_max; temperature += (_c_step * num_blocks * VWARP_NUM))
     {
         gpu_fill_rand(dev_s, _n*num_blocks*VWARP_NUM);
 
         for(int i = 0; i < num_blocks*VWARP_NUM; i++)
-            dev_temperatures[i] = temperature + _t_step*i;
+            dev_temperatures[i] = temperature + _c_step*i;
 
         SAFE_KERNEL_CALL((mars_mc_warp_per_mean_field_kernel<<<num_blocks , block_size>>>(dev_mat,
                                  dev_s, dev_h, _n, _c_step, _d_min, _alpha, dev_temperatures)));

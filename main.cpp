@@ -45,7 +45,6 @@ int main(int argc, char **argv)
 
         // common params
         const int n = J.get_dim_size();
-        base_type t_step = parser.get_t_step();
         base_type d_min = parser.get_d_min();
 
         // read h-vector
@@ -66,12 +65,12 @@ int main(int argc, char **argv)
             base_type alpha = parser.get_alpha();
 
             double parallel_time = 0;
-            base_type parallel_energy = parallel_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step, parallel_time);
+            base_type parallel_energy = parallel_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, parallel_time);
 
             if(parser.check())
             {
                 double seq_time = 0;
-                base_type sequential_energy = sequential_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, t_step, seq_time);
+                base_type sequential_energy = sequential_mars(J, h, n, t_min, t_max, c_step, d_min, alpha, seq_time);
                 if(parallel_time > 0)
                     std::cout << "acceleration: " << seq_time / parallel_time << std::endl;
 
@@ -108,7 +107,7 @@ int main(int argc, char **argv)
                 cudaSetDevice(attached_gpu); // select which GPU we use
                 BatchInfo info = parser.get_batch_info(batch_pos);
                 double parallel_time = 0;
-                base_type parallel_energy = parallel_mars<base_type>(J, h, n, info.t_min, info.t_max, info.c_step, d_min, info.alpha, t_step, parallel_time);
+                base_type parallel_energy = parallel_mars<base_type>(J, h, n, info.t_min, info.t_max, info.c_step, d_min, info.alpha, parallel_time);
                 #pragma omp critical
                 {
                     std::cout << "batch № " << batch_pos << std::endl;
